@@ -1,0 +1,78 @@
+
+#  DineFlow — Smart Restaurant Management System
+#  .gitignore
+
+# ── PYTHON ──────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Pytest / test cache
+.pytest_cache/
+.cache/
+*.pytest_cache
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+MANIFEST
+
+
+# ── DATABASE & INSTANCE ─────────────────────────────────────
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+
+# ── NODE / FRONTEND ─────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+.nuxt/
+.output/
+.vite/
+*.local
+
+
+# ── OS FILES ────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+
+# ── EDITORS & IDEs ──────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+
+# ── LOGS ────────────────────────────────────────────────────
+*.log
+logs/
