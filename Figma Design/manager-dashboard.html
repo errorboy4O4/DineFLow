@@ -1,0 +1,2295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DineFlow — Manager Dashboard</title>
+
+  <!-- Google Fonts: Playfair Display + DM Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            coffee: { DEFAULT: '#6F4E37', light: '#8B6347', dark: '#4A3423' },
+            cream: { DEFAULT: '#F8F5F0', dark: '#EDE8E0' },
+            mint: { DEFAULT: '#3AAFA9', light: '#4EC9C3', dark: '#2A8F8A' },
+            success: '#2A9D8F',
+            danger: '#E63946',
+            kitchen: '#1E1E1E',
+            amber: '#F4A261',
+            gold: '#E9C46A',
+          },
+          fontFamily: {
+            display: ['"Playfair Display"', 'serif'],
+            sans: ['"DM Sans"', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #F8F5F0;
+      color: #1A1208;
+      overflow-x: hidden;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 260px;
+      min-height: 100vh;
+      background: #1A1208;
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), width 0.3s;
+      flex-shrink: 0;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+    }
+    #sidebar.collapsed { width: 72px; }
+    #sidebar.collapsed .nav-label,
+    #sidebar.collapsed .sidebar-logo-text,
+    #sidebar.collapsed .sidebar-role { display: none; }
+    #sidebar.collapsed .nav-item { justify-content: center; padding: 0.75rem; }
+    #sidebar.collapsed .nav-icon { margin: 0; font-size: 1.35rem; }
+
+    .main-content {
+      margin-left: 260px;
+      min-height: 100vh;
+      transition: margin-left 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .main-content.expanded { margin-left: 72px; }
+
+    /* Mobile: sidebar slides off */
+    @media (max-width: 767px) {
+      #sidebar { transform: translateX(-100%); width: 260px !important; }
+      #sidebar.mobile-open { transform: translateX(0); }
+      .main-content { margin-left: 0 !important; }
+          }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 40;
+      pointer-events: none;
+    }
+    .sidebar-overlay.active {
+      display: block;
+      pointer-events: auto;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.625rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #9C8E84;
+      font-weight: 500;
+      font-size: 0.9375rem;
+      margin: 0.125rem 0.75rem;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.07); color: #F8F5F0; }
+    .nav-item.active { background: #6F4E37; color: #F8F5F0; }
+    .nav-icon { font-size: 1.2rem; flex-shrink: 0; }
+
+    /* ── KPI Cards ── */
+    .kpi-card {
+      background: white;
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      border: 1px solid rgba(111,78,55,0.1);
+      box-shadow: 0 2px 12px rgba(111,78,55,0.06);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(111,78,55,0.12); }
+
+    /* ── Tables ── */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+      background: #F0EBE3;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #8B6347;
+      padding: 0.75rem 1rem;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .data-table td {
+      padding: 0.875rem 1rem;
+      border-bottom: 1px solid rgba(111,78,55,0.08);
+      font-size: 0.9375rem;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: #FAFAF7; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.625rem;
+      border-radius: 2rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-ok { background: #D1F5F0; color: #1A6B63; }
+    .badge-warn { background: #FEF3C7; color: #92400E; }
+    .badge-danger { background: #FEE2E2; color: #991B1B; }
+    .badge-out { background: #E5E7EB; color: #374151; }
+    .badge-pending { background: #FEF3C7; color: #92400E; }
+    .badge-popular { background: #FDE7EB; color: #9B1C2A; }
+
+    /* ── Stock bar ── */
+    .stock-bar-wrap { width: 80px; background: #EDE8E0; border-radius: 4px; height: 6px; }
+    .stock-bar { height: 6px; border-radius: 4px; transition: width 0.4s; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      background: #6F4E37;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1.125rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-primary:hover { background: #8B6347; }
+    .btn-primary:active { transform: scale(0.97); }
+
+    .btn-ghost {
+      background: transparent;
+      color: #6F4E37;
+      border: 1.5px solid #6F4E37;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1.125rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-ghost:hover { background: #6F4E37; color: white; }
+
+    .btn-danger {
+      background: #E63946;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1.125rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-danger:hover { background: #c72d39; }
+
+    .btn-success {
+      background: #2A9D8F;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1.125rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-success:hover { background: #227d71; }
+
+    /* ── Card / Panel ── */
+    .panel {
+      background: white;
+      border-radius: 1rem;
+      border: 1px solid rgba(111,78,55,0.1);
+      box-shadow: 0 2px 12px rgba(111,78,55,0.06);
+      overflow: hidden;
+    }
+
+    /* ── Scroll area ── */
+    .scroll-y { overflow-y: auto; }
+    .scroll-y::-webkit-scrollbar { width: 4px; }
+    .scroll-y::-webkit-scrollbar-track { background: transparent; }
+    .scroll-y::-webkit-scrollbar-thumb { background: #D4C8BE; border-radius: 4px; }
+
+    /* ── Toggle switch ── */
+    .toggle-wrap { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .toggle-wrap input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; cursor: pointer; inset: 0;
+      background: #D4C8BE; border-radius: 24px; transition: 0.3s;
+    }
+    .toggle-slider:before {
+      content: ''; position: absolute;
+      width: 18px; height: 18px;
+      left: 3px; bottom: 3px;
+      background: white; border-radius: 50%; transition: 0.3s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    input:checked + .toggle-slider { background: #2A9D8F; }
+    input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+    /* ── Range slider (pricing) ── */
+    input[type=range] {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 6px;
+      background: #EDE8E0; border-radius: 6px; outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 20px; height: 20px;
+      background: #6F4E37; border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(111,78,55,0.4);
+    }
+
+    /* ── Fade transition ── */
+    .fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
+    .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+    /* ── Toast ── */
+    .toast-container {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .toast {
+      background: #1A1208; color: #F8F5F0;
+      padding: 0.75rem 1.25rem; border-radius: 0.75rem;
+      font-size: 0.875rem; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      display: flex; align-items: center; gap: 0.5rem;
+      animation: toastIn 0.3s ease;
+    }
+    @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* ── Number input ── */
+    .num-input {
+      width: 80px; padding: 0.375rem 0.5rem;
+      border: 1.5px solid #E5DDD5; border-radius: 0.375rem;
+      font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
+      text-align: center; background: #FAFAF7;
+      transition: border-color 0.2s;
+    }
+    .num-input:focus { border-color: #6F4E37; outline: none; }
+
+    /* Search input */
+    .search-input {
+      padding: 0.5rem 1rem 0.5rem 2.5rem;
+      border: 1.5px solid #E5DDD5; border-radius: 0.5rem;
+      font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
+      background: #FAFAF7; transition: border-color 0.2s;
+      width: 100%;
+    }
+    .search-input:focus { border-color: #6F4E37; outline: none; }
+
+    /* ── Mobile bottom nav ── */
+    .mobile-bottom-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #1A1208; z-index: 45;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    @media (max-width: 767px) {
+      .mobile-bottom-nav { display: flex; }
+    }
+    .mobile-nav-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 0.5rem 0.25rem 0.625rem;
+      color: #9C8E84; font-size: 0.625rem; font-weight: 600;
+      cursor: pointer; transition: color 0.2s; gap: 0.25rem;
+    }
+    .mobile-nav-item.active { color: #F4A261; }
+    .mobile-nav-item i { font-size: 1.25rem; }
+
+    @media (max-width: 767px) {
+      .main-content { padding-bottom: 4.5rem; }
+    }
+
+    /* ── Animations ── */
+    .slide-up {
+      animation: slideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    /* Stagger children */
+    .stagger > *:nth-child(1) { animation-delay: 0.04s; }
+    .stagger > *:nth-child(2) { animation-delay: 0.08s; }
+    .stagger > *:nth-child(3) { animation-delay: 0.12s; }
+    .stagger > *:nth-child(4) { animation-delay: 0.16s; }
+    .stagger > *:nth-child(5) { animation-delay: 0.20s; }
+    .stagger > *:nth-child(6) { animation-delay: 0.24s; }
+
+    /* Order card selected */
+    .order-item { cursor: pointer; transition: background 0.15s; border-radius: 0.75rem; padding: 0.875rem; border: 1.5px solid transparent; }
+    .order-item:hover { background: #F8F5F0; }
+    .order-item.selected { background: #FDF4ED; border-color: #6F4E37; }
+
+    /* Top bar */
+    .topbar {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(248, 245, 240, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(111,78,55,0.1);
+    }
+
+    /* Category filter pill */
+    .cat-pill {
+      display: inline-block; padding: 0.3rem 0.875rem;
+      border-radius: 2rem; border: 1.5px solid #E5DDD5;
+      font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+      transition: all 0.15s; white-space: nowrap; color: #6B5744;
+    }
+    .cat-pill:hover { border-color: #6F4E37; color: #6F4E37; }
+    .cat-pill.active { background: #6F4E37; border-color: #6F4E37; color: white; }
+  </style>
+</head>
+
+<body>
+<div id="app">
+  <!-- Sidebar Overlay (mobile) -->
+  <div class="sidebar-overlay" :class="{'active': mobileSidebarOpen}" @click="closeMobileSidebar"></div>
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside id="sidebar" :class="{ 'collapsed': sidebarCollapsed, 'mobile-open': mobileSidebarOpen }">
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-5 py-5">
+      <div style="width:36px;height:36px;background:#6F4E37;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span style="font-size:1.1rem;">☕</span>
+      </div>
+      <div class="sidebar-logo-text">
+        <div style="font-family:'Playfair Display',serif;font-weight:700;color:#F8F5F0;font-size:1.125rem;line-height:1.2;">DineFlow</div>
+        <div class="sidebar-role" style="font-size:0.7rem;color:#9C8E84;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;">Manager Portal</div>
+      </div>
+    </div>
+
+    <hr style="border-color:rgba(255,255,255,0.07);margin:0 0.75rem 0.5rem;" />
+
+    <!-- Nav items -->
+    <nav style="flex:1;padding:0.25rem 0;" class="scroll-y">
+      <div v-for="item in navItems" :key="item.id"
+           class="nav-item" :class="{ active: currentPage === item.id }"
+           @click="navigate(item.id)"
+           :title="sidebarCollapsed ? item.label : ''">
+        <i class="nav-icon" :class="item.icon"></i>
+        <span class="nav-label">{{ item.label }}</span>
+        <span v-if="item.badge && !sidebarCollapsed" style="margin-left:auto;background:#E63946;color:white;font-size:0.65rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:2rem;">{{ item.badge }}</span>
+      </div>
+    </nav>
+
+    <!-- Collapse toggle (desktop only) -->
+    <div style="padding:0.75rem;display:none;" class="md:block">
+      <button @click="toggleSidebar" style="width:100%;background:rgba(255,255,255,0.06);border:none;border-radius:0.5rem;padding:0.5rem;color:#9C8E84;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:0.5rem;" onmouseover="this.style.background='rgba(255,255,255,0.12)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'">
+        <i :class="sidebarCollapsed ? 'bi bi-chevron-right' : 'bi bi-chevron-left'" style="font-size:0.875rem;"></i>
+        <span v-if="!sidebarCollapsed" style="font-size:0.75rem;font-weight:600;">Collapse</span>
+      </button>
+    </div>
+
+    <!-- User info -->
+    <div style="padding:0.75rem 1.25rem 1.25rem;border-top:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:0.75rem;">
+      <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#6F4E37,#3AAFA9);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700;color:white;font-size:0.875rem;">R</div>
+      <div class="sidebar-logo-text">
+        <div style="font-size:0.875rem;font-weight:600;color:#F8F5F0;">Rajesh Kumar</div>
+        <div style="font-size:0.7rem;color:#9C8E84;">Manager</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════ MAIN ═══════════ -->
+  <div class="main-content" :class="{ 'expanded': sidebarCollapsed }">
+
+    <!-- Topbar -->
+    <header class="topbar px-4 md:px-6 py-3 flex items-center gap-3">
+      <!-- Mobile hamburger -->
+      <button @click="openMobileSidebar" class="md:hidden" style="background:none;border:none;cursor:pointer;font-size:1.35rem;color:#4A3423;padding:0.25rem;">
+        <i class="bi bi-list"></i>
+      </button>
+
+      <!-- Page title -->
+      <h1 style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.25rem;color:#1A1208;flex:1;">
+        {{ currentPageLabel }}
+      </h1>
+
+      <!-- Right actions -->
+      <div class="flex items-center gap-2">
+        <!-- Alerts bell -->
+        <button style="position:relative;background:white;border:1.5px solid #E5DDD5;border-radius:0.5rem;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6F4E37;transition:all 0.2s;" onmouseover="this.style.background='#FDF4ED'" onmouseout="this.style.background='white'">
+          <i class="bi bi-bell" style="font-size:1rem;"></i>
+          <span style="position:absolute;top:4px;right:4px;width:8px;height:8px;background:#E63946;border-radius:50%;border:1.5px solid white;"></span>
+        </button>
+        <!-- Date/time -->
+        <div style="background:white;border:1.5px solid #E5DDD5;border-radius:0.5rem;padding:0.4rem 0.875rem;font-size:0.8125rem;font-weight:600;color:#6B5744;white-space:nowrap;" class="hidden sm:block">
+          {{ currentTime }}
+        </div>
+      </div>
+    </header>
+
+    <!-- ── PAGE CONTENT ── -->
+    <main class="p-4 md:p-6" style="max-width:1400px;margin:0 auto;">
+      <transition name="fade" mode="out-in">
+
+        <!-- ════════════ DASHBOARD ════════════ -->
+        <div v-if="currentPage === 'dashboard'" key="dashboard" class="slide-up">
+
+          <!-- KPI Grid -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-5 stagger">
+            <div class="kpi-card slide-up" v-for="kpi in kpiCards" :key="kpi.label">
+              <div class="flex justify-between items-start mb-3">
+                <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#9C8E84;">{{ kpi.label }}</div>
+                <div :style="`background:${kpi.bg};color:${kpi.color};width:34px;height:34px;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0`">{{ kpi.icon }}</div>
+              </div>
+              <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:#1A1208;line-height:1;">{{ kpi.value }}</div>
+              <div v-if="kpi.sub" style="font-size:0.75rem;color:#9C8E84;margin-top:0.375rem;">{{ kpi.sub }}</div>
+              <div v-if="kpi.trend" :style="`font-size:0.75rem;margin-top:0.375rem;font-weight:600;color:${kpi.trend > 0 ? '#2A9D8F' : '#E63946'}`">
+                <i :class="kpi.trend > 0 ? 'bi bi-arrow-up-right' : 'bi bi-arrow-down-right'"></i>
+                {{ Math.abs(kpi.trend) }}% vs last week
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts row -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+            <!-- Revenue chart -->
+            <div class="panel lg:col-span-2">
+              <div class="p-4 flex items-center justify-between border-b" style="border-color:rgba(111,78,55,0.1)">
+                <h3 style="font-weight:700;font-size:0.9375rem;">Weekly Revenue</h3>
+                <span style="font-size:0.75rem;color:#9C8E84;background:#F0EBE3;padding:0.25rem 0.625rem;border-radius:2rem;font-weight:600;">This Week</span>
+              </div>
+              <div class="p-4" style="height:240px;position:relative;">
+                <svg viewBox="0 0 420 190" style="width:100%;height:100%;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+                  <line x1="40" y1="10" x2="40" y2="150" stroke="rgba(111,78,55,0.1)" stroke-width="1"/>
+                  <line x1="40" y1="150" x2="410" y2="150" stroke="rgba(111,78,55,0.1)" stroke-width="1"/>
+                  <line v-for="(r,i) in [0,1,2,3]" :key="i" x1="40" :y1="10+i*46" x2="410" :y2="10+i*46" stroke="rgba(111,78,55,0.07)" stroke-width="1" stroke-dasharray="3,3"/>
+                  <text v-for="(v,i) in ['38k','28k','19k','9k']" :key="i" x="36" :y="14+i*46" text-anchor="end" font-size="9" fill="#9C8E84" font-family="DM Sans">₹{{v}}</text>
+                  <g v-for="(d,i) in revenueChart" :key="d.day">
+                    <rect :x="40+i*61.7-18" :y="150-((d.revenue/42000)*140)" :width="36" :height="(d.revenue/42000)*140"
+                      :fill="i===6?'#6F4E37':'#D4C4B8'" rx="4"/>
+                    <text :x="40+i*61.7" y="168" text-anchor="middle" font-size="9.5" fill="#6B5744" font-family="DM Sans" font-weight="600">{{d.day}}</text>
+                  </g>
+                </svg>
+              </div>
+            </div>
+            <!-- Order status donut -->
+            <div class="panel">
+              <div class="p-4 border-b" style="border-color:rgba(111,78,55,0.1)">
+                <h3 style="font-weight:700;font-size:0.9375rem;">Order Status</h3>
+              </div>
+              <div class="p-4" style="height:200px;position:relative;display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 160 160" style="width:160px;height:160px;" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="80" cy="80" r="60" fill="none" stroke="#EDE8E0" stroke-width="22"/>
+                  <!-- Completed: 87/110 = 79% → 301deg -->
+                  <circle cx="80" cy="80" r="60" fill="none" stroke="#2A9D8F" stroke-width="22"
+                    stroke-dasharray="301 376" stroke-dashoffset="94" stroke-linecap="butt"/>
+                  <!-- Preparing: 14/110 = 13% → 49deg -->
+                  <circle cx="80" cy="80" r="60" fill="none" stroke="#F4A261" stroke-width="22"
+                    stroke-dasharray="49 376" stroke-dashoffset="-207" stroke-linecap="butt"/>
+                  <!-- Pending: 6/110 = 5% → 20deg -->
+                  <circle cx="80" cy="80" r="60" fill="none" stroke="#E9C46A" stroke-width="22"
+                    stroke-dasharray="20 376" stroke-dashoffset="-256" stroke-linecap="butt"/>
+                  <!-- Cancelled: 3/110 = 3% → 11deg -->
+                  <circle cx="80" cy="80" r="60" fill="none" stroke="#E63946" stroke-width="22"
+                    stroke-dasharray="11 376" stroke-dashoffset="-276" stroke-linecap="butt"/>
+                  <text x="80" y="75" text-anchor="middle" font-size="20" font-weight="700" fill="#1A1208" font-family="DM Sans">110</text>
+                  <text x="80" y="92" text-anchor="middle" font-size="10" fill="#9C8E84" font-family="DM Sans">orders</text>
+                </svg>
+              </div>
+              <div class="px-4 pb-4 grid grid-cols-2 gap-1">
+                <div v-for="s in orderStatus" :key="s.label" style="display:flex;align-items:center;gap:0.375rem;font-size:0.75rem;">
+                  <span :style="`width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0`"></span>
+                  <span style="color:#6B5744;font-weight:500;">{{ s.label }}: <b style="color:#1A1208;">{{ s.value }}</b></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom row: Low stock + Activity -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Low stock alerts -->
+            <div class="panel" style="border:1.5px solid #FCD34D;box-shadow:0 2px 16px rgba(244,162,97,0.18);">
+              <div class="p-4 flex justify-between items-center border-b" style="background:linear-gradient(90deg,#FEF3C7,#FFF8ED);border-color:#FCD34D;">
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                  <div style="width:30px;height:30px;background:#F59E0B;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;">⚠️</div>
+                  <div>
+                    <h3 style="font-weight:700;font-size:0.9375rem;color:#92400E;">Low Stock Alerts</h3>
+                    <div style="font-size:0.7rem;color:#B45309;font-weight:600;">{{ lowStockItems.length }} item{{ lowStockItems.length !== 1 ? 's' : '' }} need attention</div>
+                  </div>
+                </div>
+                <button class="btn-ghost" style="padding:0.3rem 0.75rem;font-size:0.75rem;border-color:#F59E0B;color:#92400E;" @click="navigate('inventory')">View All</button>
+              </div>
+              <div style="padding:0.5rem 0;background:#FFFBF0;">
+                <div v-for="item in lowStockItems" :key="item.id"
+                     :style="`display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1.25rem;border-bottom:1px solid rgba(245,158,11,0.12);${item.stock===0?'background:#FFF1F2;':'background:transparent;'}`">
+                  <div style="position:relative;flex-shrink:0;">
+                    <div :class="item.stock === 0 ? 'badge-danger badge' : 'badge-warn badge'" style="width:44px;justify-content:center;font-size:0.8rem;">
+                      {{ item.stock === 0 ? 'OUT' : item.stock }}
+                    </div>
+                  </div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-weight:600;font-size:0.875rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" :style="item.stock===0?'color:#991B1B':'color:#1A1208'">{{ item.name }}</div>
+                    <div style="font-size:0.75rem;color:#9C8E84;">Threshold: {{ item.threshold }} {{ item.unit }}</div>
+                  </div>
+                  <div style="text-align:right;flex-shrink:0;">
+                    <div class="stock-bar-wrap" style="width:72px;">
+                      <div class="stock-bar" :style="`width:${Math.min(100, (item.stock/item.threshold)*100)}%;background:${item.stock===0?'#E63946':item.stock<item.threshold?'#F4A261':'#2A9D8F'}`"></div>
+                    </div>
+                    <div style="font-size:0.65rem;color:#9C8E84;margin-top:2px;">{{ item.unit }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent activity -->
+            <div class="panel">
+              <div class="p-4 border-b" style="border-color:rgba(111,78,55,0.1)">
+                <h3 style="font-weight:700;font-size:0.9375rem;">Recent Activity</h3>
+              </div>
+              <div style="padding:0.5rem 0;">
+                <div v-for="act in recentActivity" :key="act.message" style="display:flex;align-items:flex-start;gap:0.875rem;padding:0.75rem 1.25rem;border-bottom:1px solid rgba(111,78,55,0.06);">
+                  <span style="font-size:1.1rem;flex-shrink:0;margin-top:2px;">{{ act.icon }}</span>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:0.875rem;font-weight:500;">{{ act.message }}</div>
+                    <div style="font-size:0.75rem;color:#9C8E84;margin-top:0.125rem;">{{ act.time }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════════ ORDERS ════════════ -->
+        <div v-else-if="currentPage === 'orders'" key="orders" class="slide-up">
+          <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+            <!-- Left: Pending list -->
+            <div class="lg:col-span-2 panel" style="max-height:calc(100vh - 140px);">
+              <div class="p-4 border-b" style="border-color:rgba(111,78,55,0.1)">
+                <h3 style="font-weight:700;font-size:0.9375rem;">Pending Orders</h3>
+                <p style="font-size:0.8125rem;color:#9C8E84;margin-top:0.125rem;">{{ pendingOrders.length }} awaiting approval</p>
+              </div>
+              <div class="scroll-y" style="max-height:calc(100vh - 220px);padding:0.75rem;">
+                <div v-if="pendingOrders.length === 0" style="text-align:center;padding:3rem;color:#9C8E84;">
+                  <div style="font-size:2.5rem;margin-bottom:0.5rem;">🎉</div>
+                  <div style="font-weight:600;">All caught up!</div>
+                  <div style="font-size:0.8125rem;margin-top:0.25rem;">No pending orders.</div>
+                </div>
+                <div v-for="order in pendingOrders" :key="order.id"
+                     class="order-item" :class="{ selected: selectedOrder?.id === order.id }"
+                     @click="selectOrder(order)">
+                  <div class="flex justify-between items-start mb-1">
+                    <span style="font-weight:700;font-size:0.875rem;color:#1A1208;">{{ order.id }}</span>
+                    <span style="font-size:0.75rem;color:#9C8E84;">{{ order.time }}</span>
+                  </div>
+                  <div style="font-size:0.8125rem;color:#6B5744;margin-bottom:0.375rem;">Table {{ order.table }}</div>
+                  <div class="flex justify-between items-center">
+                    <span style="font-size:0.8125rem;color:#9C8E84;">{{ order.items.length }} items</span>
+                    <span style="font-weight:700;color:#6F4E37;font-size:0.9375rem;">₹{{ order.total.toLocaleString() }}</span>
+                  </div>
+                  <div v-if="order.special" style="margin-top:0.375rem;font-size:0.75rem;background:#FEF3C7;color:#92400E;padding:0.25rem 0.5rem;border-radius:0.375rem;">
+                    📝 {{ order.special }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Order detail -->
+            <div class="lg:col-span-3">
+              <div v-if="!selectedOrder" class="panel" style="display:flex;align-items:center;justify-content:center;height:300px;flex-direction:column;gap:0.75rem;color:#9C8E84;">
+                <div style="font-size:3rem;">👆</div>
+                <div style="font-weight:600;">Select an order to review</div>
+              </div>
+
+              <div v-else class="panel slide-up">
+                <div class="p-4 border-b flex justify-between items-center" style="border-color:rgba(111,78,55,0.1)">
+                  <div>
+                    <h3 style="font-weight:700;font-size:1rem;">{{ selectedOrder.id }}</h3>
+                    <p style="font-size:0.8125rem;color:#9C8E84;">Table {{ selectedOrder.table }} · {{ selectedOrder.time }}</p>
+                  </div>
+                  <span class="badge badge-pending">⏳ Pending</span>
+                </div>
+
+                <!-- Items table -->
+                <div style="overflow-x:auto;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Dish</th>
+                        <th>Qty</th>
+                        <th>Unit Cost</th>
+                        <th>Unit Price</th>
+                        <th>Margin</th>
+                        <th>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="item in selectedOrder.items" :key="item.name">
+                        <td style="font-weight:600;">{{ item.name }}</td>
+                        <td>{{ item.qty }}</td>
+                        <td style="color:#9C8E84;">₹{{ item.cost }}</td>
+                        <td>₹{{ item.price }}</td>
+                        <td>
+                          <span :style="`color:${((item.price-item.cost)/item.price*100)>40?'#2A9D8F':'#E9C46A'};font-weight:600;`">
+                            {{ ((item.price - item.cost) / item.price * 100).toFixed(0) }}%
+                          </span>
+                        </td>
+                        <td style="font-weight:700;">₹{{ (item.price * item.qty).toLocaleString() }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Totals -->
+                <div style="padding:1rem 1.25rem;background:#FAFAF7;">
+                  <div class="grid grid-cols-3 gap-3 mb-4">
+                    <div style="text-align:center;padding:0.75rem;background:white;border-radius:0.625rem;border:1px solid rgba(111,78,55,0.1)">
+                      <div style="font-size:0.75rem;color:#9C8E84;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Manufacturing Cost</div>
+                      <div style="font-size:1.1rem;font-weight:700;margin-top:0.25rem;">₹{{ orderTotalCost.toLocaleString() }}</div>
+                    </div>
+                    <div style="text-align:center;padding:0.75rem;background:white;border-radius:0.625rem;border:1px solid rgba(111,78,55,0.1)">
+                      <div style="font-size:0.75rem;color:#9C8E84;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Profit</div>
+                      <div :style="`font-size:1.1rem;font-weight:700;margin-top:0.25rem;color:${orderProfit > 0 ? '#2A9D8F' : '#E63946'}`">₹{{ orderProfit.toLocaleString() }}</div>
+                    </div>
+                    <div style="text-align:center;padding:0.75rem;background:white;border-radius:0.625rem;border:1px solid rgba(111,78,55,0.1)">
+                      <div style="font-size:0.75rem;color:#9C8E84;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Total Cost</div>
+                      <div style="font-size:1.1rem;font-weight:700;color:#1A6B63;margin-top:0.25rem;">₹{{ selectedOrder.total.toLocaleString() }}</div>
+                    </div>
+                  </div>
+
+                  <div v-if="selectedOrder.special" style="background:#FEF3C7;border:1px solid #FCD34D;padding:0.625rem 0.875rem;border-radius:0.5rem;font-size:0.875rem;color:#92400E;margin-bottom:1rem;">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Special request:</strong> {{ selectedOrder.special }}
+                  </div>
+
+                  <div class="flex gap-3">
+                    <button class="btn-success" style="flex:1;" @click="approveOrder(selectedOrder.id)">
+                      <i class="bi bi-check-lg me-1"></i> Approve Order
+                    </button>
+                    <button class="btn-danger" @click="rejectOrder(selectedOrder.id)">
+                      <i class="bi bi-x-lg me-1"></i> Reject
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════════ INVENTORY ════════════ -->
+        <div v-else-if="currentPage === 'inventory'" key="inventory" class="slide-up">
+
+          <!-- Inventory Modal: Add / Edit -->
+          <div v-if="invModal.open" style="position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;"
+               @click.self="invModal.open=false">
+            <div style="position:absolute;inset:0;background:rgba(30,20,10,0.45);backdrop-filter:blur(3px);"></div>
+            <div style="position:relative;background:#fff;border-radius:1.25rem;padding:1.75rem;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(111,78,55,0.25);z-index:1;">
+              <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;margin-bottom:1.25rem;color:#3D2314;">
+                {{ invModal.mode==='add' ? '➕ Add New Ingredient' : '✏️ Edit Ingredient' }}
+              </h3>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.875rem;margin-bottom:1rem;">
+                <div style="grid-column:1/-1;">
+                  <label style="font-size:0.8rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.35rem;">Ingredient Name *</label>
+                  <input v-model="invModal.form.name" type="text" placeholder="e.g. Cardamom" class="search-input" style="width:100%;padding:0.6rem 0.875rem;" />
+                </div>
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.35rem;">Category *</label>
+                  <select v-model="invModal.form.category" class="search-input" style="width:100%;padding:0.6rem 0.875rem;">
+                    <option value="">-- Select --</option>
+                    <option>Meat &amp; Poultry</option><option>Seafood</option><option>Pulses &amp; Lentils</option><option>Grains</option><option>Vegetables</option>
+                    <option>Dairy</option><option>Spices</option><option>Pantry</option><option>Beverages</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.35rem;">Unit *</label>
+                  <select v-model="invModal.form.unit" class="search-input" style="width:100%;padding:0.6rem 0.875rem;">
+                    <option>kg</option><option>ltr</option><option>pcs</option><option>gm</option><option>ml</option><option>pkt</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.35rem;">Current Stock</label>
+                  <input v-model.number="invModal.form.stock" type="number" min="0" step="0.1" class="search-input" style="width:100%;padding:0.6rem 0.875rem;" />
+                </div>
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.35rem;">Low Stock Threshold *</label>
+                  <input v-model.number="invModal.form.threshold" type="number" min="0" step="0.1" class="search-input" style="width:100%;padding:0.6rem 0.875rem;" />
+                </div>
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.35rem;">Cost per Unit (₹) *</label>
+                  <input v-model.number="invModal.form.price" type="number" min="0" step="0.5" class="search-input" style="width:100%;padding:0.6rem 0.875rem;" />
+                </div>
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.35rem;">Supplier</label>
+                  <input v-model="invModal.form.supplier" type="text" placeholder="Supplier name" class="search-input" style="width:100%;padding:0.6rem 0.875rem;" />
+                </div>
+              </div>
+              <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+                <button @click="invModal.open=false"
+                        style="padding:0.6rem 1.25rem;border-radius:0.75rem;background:#F0EBE3;color:#6B5744;font-weight:600;font-size:0.875rem;border:none;cursor:pointer;">
+                  Cancel
+                </button>
+                <button @click="saveInventoryItem"
+                        style="padding:0.6rem 1.5rem;border-radius:0.75rem;background:#6F4E37;color:#fff;font-weight:600;font-size:0.875rem;border:none;cursor:pointer;">
+                  {{ invModal.mode==='add' ? 'Add Ingredient' : 'Save Changes' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Delete Confirm Modal -->
+          <div v-if="invDeleteConfirm.open" style="position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;"
+               @click.self="invDeleteConfirm.open=false">
+            <div style="position:absolute;inset:0;background:rgba(30,20,10,0.45);backdrop-filter:blur(3px);"></div>
+            <div style="position:relative;background:#fff;border-radius:1.25rem;padding:1.75rem;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(111,78,55,0.25);z-index:1;text-align:center;">
+              <div style="font-size:2.5rem;margin-bottom:0.75rem;">🗑️</div>
+              <h3 style="font-weight:700;font-size:1.1rem;margin-bottom:0.5rem;">Delete Ingredient?</h3>
+              <p style="color:#9C8E84;font-size:0.875rem;margin-bottom:1.5rem;">
+                <strong>{{ invDeleteConfirm.item?.name }}</strong> will be permanently removed from inventory.
+              </p>
+              <div style="display:flex;gap:0.75rem;">
+                <button @click="invDeleteConfirm.open=false"
+                        style="flex:1;padding:0.65rem;border-radius:0.75rem;background:#F0EBE3;color:#6B5744;font-weight:600;border:none;cursor:pointer;">
+                  Cancel
+                </button>
+                <button @click="confirmDeleteInventory"
+                        style="flex:1;padding:0.65rem;border-radius:0.75rem;background:#E63946;color:#fff;font-weight:600;border:none;cursor:pointer;">
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filters + Add button -->
+          <div class="flex flex-wrap gap-3 mb-4 items-center">
+            <div style="position:relative;flex:1;min-width:200px;max-width:320px;">
+              <i class="bi bi-search" style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:#9C8E84;font-size:0.875rem;"></i>
+              <input v-model="inventorySearch" type="text" class="search-input" placeholder="Search ingredients…" />
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <span v-for="cat in inventoryCategories" :key="cat"
+                    class="cat-pill" :class="{ active: inventoryCatFilter === cat }"
+                    @click="inventoryCatFilter = cat">{{ cat }}</span>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:0.5rem;flex-shrink:0;align-items:center;">
+              <span class="badge badge-danger">{{ outOfStock.length }} Out</span>
+              <span class="badge badge-warn">{{ lowStockItems.length }} Low</span>
+              <button @click="openAddInventory"
+                      style="padding:0.5rem 1rem;border-radius:0.75rem;background:#6F4E37;color:#fff;font-size:0.8125rem;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;gap:0.375rem;">
+                <i class="bi bi-plus-lg"></i> Add Ingredient
+              </button>
+            </div>
+          </div>
+
+          <!-- Desktop Table -->
+          <div class="panel" style="overflow-x:auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Ingredient</th>
+                  <th>Category</th>
+                  <th>Current Stock</th>
+                  <th>Threshold</th>
+                  <th>Status</th>
+                  <th>Level</th>
+                  <th>Cost/Unit</th>
+                  <th>Supplier</th>
+                  <th style="text-align:center;">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in filteredInventory" :key="item.id">
+                  <td style="font-weight:600;">{{ item.name }}</td>
+                  <td><span style="font-size:0.8rem;color:#9C8E84;">{{ item.category }}</span></td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                      <input type="number" v-model.number="item.stock" class="num-input" :min="0" step="0.5" @change="updateStock(item)"
+                             style="width:68px;" />
+                      <span style="font-size:0.8rem;color:#9C8E84;">{{ item.unit }}</span>
+                    </div>
+                  </td>
+                  <td style="color:#9C8E84;">{{ item.threshold }} {{ item.unit }}</td>
+                  <td>
+                    <span v-if="item.stock === 0" class="badge badge-out">Out of Stock</span>
+                    <span v-else-if="item.stock < item.threshold" class="badge badge-warn">Low</span>
+                    <span v-else class="badge badge-ok">In Stock</span>
+                  </td>
+                  <td>
+                    <div class="stock-bar-wrap" style="width:72px;">
+                      <div class="stock-bar" :style="`width:${Math.min(100,(item.stock/item.threshold)*100)}%;background:${item.stock===0?'#E63946':item.stock<item.threshold?'#F4A261':'#2A9D8F'}`"></div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:0.375rem;">
+                      <span style="color:#9C8E84;font-size:0.8rem;">₹</span>
+                      <input type="number" v-model.number="item.price" class="num-input" :min="0" step="0.5" style="width:68px;" />
+                      <span style="color:#9C8E84;font-size:0.75rem;">/{{ item.unit }}</span>
+                    </div>
+                  </td>
+                  <td style="color:#9C8E84;font-size:0.8125rem;">{{ item.supplier }}</td>
+                  <td style="text-align:center;">
+                    <div style="display:flex;gap:0.375rem;justify-content:center;">
+                      <button @click="openEditInventory(item)"
+                              style="padding:0.35rem 0.625rem;border-radius:0.5rem;background:#F0EBE3;color:#6F4E37;border:none;cursor:pointer;font-size:0.8rem;" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <button @click="askDeleteInventory(item)"
+                              style="padding:0.35rem 0.625rem;border-radius:0.5rem;background:#FEE2E2;color:#E63946;border:none;cursor:pointer;font-size:0.8rem;" title="Delete">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ════════════ MENU ════════════ -->
+        <div v-else-if="currentPage === 'menu'" key="menu" class="slide-up">
+
+          <!-- ── Ingredient Editor Modal ── -->
+          <div v-if="menuIngModal.open" style="position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;"
+               @click.self="menuIngModal.open=false">
+            <div style="position:absolute;inset:0;background:rgba(30,20,10,0.5);backdrop-filter:blur(3px);"></div>
+            <div style="position:relative;background:#fff;border-radius:1.25rem;width:100%;max-width:640px;height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(111,78,55,0.3);z-index:1;overflow:hidden;">
+
+              <!-- Sticky Modal Header -->
+              <div style="padding:1.25rem 1.5rem;border-bottom:1px solid #EDE8E0;display:flex;align-items:center;gap:0.875rem;flex-shrink:0;background:#fff;border-radius:1.25rem 1.25rem 0 0;">
+                <span style="font-size:1.75rem;">{{ menuIngModal.dish?.image }}</span>
+                <div style="flex:1;">
+                  <h3 style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:#3D2314;">{{ menuIngModal.dish?.name }}</h3>
+                  <p style="font-size:0.8rem;color:#9C8E84;">Manage ingredients & quantities</p>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:0.7rem;color:#9C8E84;font-weight:600;text-transform:uppercase;">Total Cost</div>
+                  <div style="font-size:1.1rem;font-weight:700;color:#E63946;">₹{{ dishIngredientTotal(menuIngModal.dish) }}</div>
+                </div>
+                <button @click="menuIngModal.open=false"
+                        style="margin-left:0.5rem;width:2rem;height:2rem;border-radius:50%;background:#F0EBE3;border:none;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>
+              </div>
+
+              <!-- Scrollable Ingredients List -->
+              <div class="scroll-y" style="flex:1;overflow-y:auto;padding:1rem 1.5rem;">
+                <div v-if="!menuIngModal.dish?.ingredients?.length" style="text-align:center;padding:2rem;color:#9C8E84;">
+                  No ingredients added yet. Add the first one below.
+                </div>
+
+                <div v-for="(ing, idx) in menuIngModal.dish?.ingredients" :key="ing.id"
+                     style="display:grid;grid-template-columns:1fr auto auto auto auto;gap:0.625rem;align-items:center;padding:0.75rem 0;border-bottom:1px solid rgba(111,78,55,0.08);">
+                  <!-- Name -->
+                  <div>
+                    <label style="font-size:0.7rem;font-weight:600;color:#9C8E84;display:block;margin-bottom:0.2rem;">Ingredient</label>
+                    <select v-model="ing.name" @change="syncIngredientCost(ing)" class="search-input" style="padding:0.45rem 0.625rem;font-size:0.8125rem;width:100%;">
+                      <option value="">-- pick --</option>
+                      <option v-for="inv in inventory" :key="inv.id" :value="inv.name">{{ inv.name }}</option>
+                      <option value="__custom__">Other (custom)</option>
+                    </select>
+                    <input v-if="ing.name==='__custom__'" v-model="ing.customName" type="text" placeholder="Ingredient name"
+                           class="search-input" style="margin-top:0.25rem;padding:0.45rem 0.625rem;font-size:0.8125rem;width:100%;" />
+                  </div>
+                  <!-- Qty -->
+                  <div>
+                    <label style="font-size:0.7rem;font-weight:600;color:#9C8E84;display:block;margin-bottom:0.2rem;">Qty</label>
+                    <input type="number" v-model.number="ing.qty" min="0.001" step="0.01"
+                           @input="recalcDishCost(menuIngModal.dish)"
+                           class="num-input" style="width:72px;" />
+                  </div>
+                  <!-- Unit -->
+                  <div>
+                    <label style="font-size:0.7rem;font-weight:600;color:#9C8E84;display:block;margin-bottom:0.2rem;">Unit</label>
+                    <select v-model="ing.unit" class="search-input" style="padding:0.45rem 0.5rem;font-size:0.8125rem;width:64px;">
+                      <option>kg</option><option>ltr</option><option>pcs</option><option>gm</option><option>ml</option>
+                    </select>
+                  </div>
+                  <!-- Cost -->
+                  <div>
+                    <label style="font-size:0.7rem;font-weight:600;color:#9C8E84;display:block;margin-bottom:0.2rem;">Cost (₹)</label>
+                    <input type="number" v-model.number="ing.cost" min="0" step="0.5"
+                           @input="recalcDishCost(menuIngModal.dish)"
+                           class="num-input" style="width:68px;" />
+                  </div>
+                  <!-- Delete -->
+                  <div style="padding-top:1.1rem;">
+                    <button @click="removeIngredient(menuIngModal.dish, idx)"
+                            style="padding:0.4rem 0.6rem;border-radius:0.5rem;background:#FEE2E2;color:#E63946;border:none;cursor:pointer;font-size:0.8rem;">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Add ingredient row -->
+                <div style="margin-top:1rem;">
+                  <button @click="addIngredientRow(menuIngModal.dish)"
+                          style="width:100%;padding:0.65rem;border-radius:0.75rem;border:2px dashed #D4C4B8;background:transparent;color:#6F4E37;font-weight:600;font-size:0.875rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:all 0.2s;"
+                          onmouseover="this.style.background='#F9F4F1'" onmouseout="this.style.background='transparent'">
+                    <i class="bi bi-plus-circle"></i> Add Ingredient
+                  </button>
+                </div>
+              </div>
+
+              <!-- Sticky Footer: Cost summary + Save -->
+              <div style="padding:1rem 1.5rem;background:#F8F5F0;border-top:1px solid #EDE8E0;flex-shrink:0;border-radius:0 0 1.25rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+                <div style="display:flex;gap:1.25rem;flex-wrap:wrap;">
+                  <div>
+                    <div style="font-size:0.7rem;color:#9C8E84;font-weight:600;text-transform:uppercase;">Ingredient Cost</div>
+                    <div style="font-size:1.1rem;font-weight:700;color:#E63946;">₹{{ dishIngredientTotal(menuIngModal.dish) }}</div>
+                  </div>
+                  <div>
+                    <div style="font-size:0.7rem;color:#9C8E84;font-weight:600;text-transform:uppercase;">Selling Price</div>
+                    <div style="font-size:1.1rem;font-weight:700;color:#6F4E37;">₹{{ menuIngModal.dish?.price }}</div>
+                  </div>
+                  <div>
+                    <div style="font-size:0.7rem;color:#9C8E84;font-weight:600;text-transform:uppercase;">Profit</div>
+                    <div style="font-size:1.1rem;font-weight:700;color:#2A9D8F;">₹{{ menuIngModal.dish ? menuIngModal.dish.price - dishIngredientTotal(menuIngModal.dish) : 0 }}</div>
+                  </div>
+                  <div>
+                    <div style="font-size:0.7rem;color:#9C8E84;font-weight:600;text-transform:uppercase;">Margin</div>
+                    <div style="font-size:1.1rem;font-weight:700;color:#3AAFA9;">
+                      {{ menuIngModal.dish && menuIngModal.dish.price ? Math.round(((menuIngModal.dish.price - dishIngredientTotal(menuIngModal.dish)) / menuIngModal.dish.price) * 100) : 0 }}%
+                    </div>
+                  </div>
+                </div>
+                <button @click="saveDishIngredients"
+                        style="padding:0.65rem 1.5rem;border-radius:0.75rem;background:#6F4E37;color:#fff;font-weight:600;font-size:0.875rem;border:none;cursor:pointer;flex-shrink:0;">
+                  <i class="bi bi-check-lg me-1"></i>Save
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ── Add / Edit Dish Modal ── -->
+          <div v-if="dishModal.open" style="position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;"
+               @click.self="dishModal.open=false">
+            <div style="position:absolute;inset:0;background:rgba(30,20,10,0.45);backdrop-filter:blur(3px);"></div>
+            <div style="position:relative;background:#fff;border-radius:1.25rem;padding:1.75rem;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(111,78,55,0.25);z-index:1;">
+              <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;margin-bottom:1.25rem;color:#3D2314;">
+                {{ dishModal.mode==='add' ? '🍽️ Add New Dish' : '✏️ Edit Dish' }}
+              </h3>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.875rem;margin-bottom:1.25rem;">
+                <div style="grid-column:1/-1;">
+                  <label style="font-size:0.8rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.35rem;">Dish Name *</label>
+                  <input v-model="dishModal.form.name" type="text" placeholder="e.g. Chicken Tikka Masala" class="search-input" style="width:100%;padding:0.6rem 0.875rem;" />
+                </div>
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.35rem;">Category *</label>
+                  <select v-model="dishModal.form.category" class="search-input" style="width:100%;padding:0.6rem 0.875rem;">
+                    <option value="">-- Select --</option>
+                    <option>Starter</option><option>Main Course</option><option>Breads</option>
+                    <option>Sides</option><option>Desserts</option><option>Beverages</option><option>Thali</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:0.8rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.35rem;">Selling Price (₹) *</label>
+                  <input v-model.number="dishModal.form.price" type="number" min="0" class="search-input" style="width:100%;padding:0.6rem 0.875rem;" />
+                </div>
+                <div style="grid-column:1/-1;">
+                  <label style="font-size:0.8rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.35rem;">Upload Dish Photo</label>
+                  <div style="position:relative;">
+                    <input type="file" accept="image/*" id="dish-photo-input"
+                           style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;z-index:2;"
+                           @change="onDishPhotoChange" />
+                    <div :style="`display:flex;align-items:center;gap:0.875rem;padding:0.625rem 0.875rem;border:1.5px dashed ${dishModal.form.photoPreview ? '#6F4E37' : '#D4C8BE'};border-radius:0.5rem;background:${dishModal.form.photoPreview ? '#FDF4ED' : '#FAFAF7'};transition:all 0.2s;`">
+                      <div v-if="dishModal.form.photoPreview"
+                           style="width:48px;height:48px;border-radius:8px;overflow:hidden;flex-shrink:0;border:1.5px solid rgba(111,78,55,0.2);">
+                        <img :src="dishModal.form.photoPreview" style="width:100%;height:100%;object-fit:cover;" />
+                      </div>
+                      <div v-else style="width:48px;height:48px;border-radius:8px;background:#F0EBE3;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="bi bi-camera" style="font-size:1.25rem;color:#9C8E84;"></i>
+                      </div>
+                      <div>
+                        <div style="font-size:0.8125rem;font-weight:600;color:#6B5744;">
+                          {{ dishModal.form.photoPreview ? 'Photo selected — click to change' : 'Click to upload a photo' }}
+                        </div>
+                        <div style="font-size:0.7rem;color:#9C8E84;margin-top:2px;">JPG, PNG or WEBP · Max 5 MB</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+                <button @click="dishModal.open=false"
+                        style="padding:0.6rem 1.25rem;border-radius:0.75rem;background:#F0EBE3;color:#6B5744;font-weight:600;font-size:0.875rem;border:none;cursor:pointer;">Cancel</button>
+                <button @click="saveDish"
+                        style="padding:0.6rem 1.5rem;border-radius:0.75rem;background:#6F4E37;color:#fff;font-weight:600;font-size:0.875rem;border:none;cursor:pointer;">
+                  {{ dishModal.mode==='add' ? 'Add Dish' : 'Save Changes' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Delete Dish Confirm ── -->
+          <div v-if="dishDeleteConfirm.open" style="position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;"
+               @click.self="dishDeleteConfirm.open=false">
+            <div style="position:absolute;inset:0;background:rgba(30,20,10,0.45);backdrop-filter:blur(3px);"></div>
+            <div style="position:relative;background:#fff;border-radius:1.25rem;padding:1.75rem;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(111,78,55,0.25);z-index:1;text-align:center;">
+              <div style="font-size:2.5rem;margin-bottom:0.75rem;">🗑️</div>
+              <h3 style="font-weight:700;font-size:1.1rem;margin-bottom:0.5rem;">Remove Dish?</h3>
+              <p style="color:#9C8E84;font-size:0.875rem;margin-bottom:1.5rem;">
+                <strong>{{ dishDeleteConfirm.dish?.name }}</strong> will be removed from the menu.
+              </p>
+              <div style="display:flex;gap:0.75rem;">
+                <button @click="dishDeleteConfirm.open=false"
+                        style="flex:1;padding:0.65rem;border-radius:0.75rem;background:#F0EBE3;color:#6B5744;font-weight:600;border:none;cursor:pointer;">Cancel</button>
+                <button @click="confirmDeleteDish"
+                        style="flex:1;padding:0.65rem;border-radius:0.75rem;background:#E63946;color:#fff;font-weight:600;border:none;cursor:pointer;">Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Menu header row -->
+          <div class="flex flex-wrap gap-3 mb-4 items-center">
+            <div style="position:relative;flex:1;min-width:200px;max-width:320px;">
+              <i class="bi bi-search" style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:#9C8E84;font-size:0.875rem;"></i>
+              <input v-model="menuSearch" type="text" class="search-input" placeholder="Search dishes…" />
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <span v-for="cat in menuCategories" :key="cat"
+                    class="cat-pill" :class="{ active: menuCatFilter === cat }"
+                    @click="menuCatFilter = cat">{{ cat }}</span>
+            </div>
+            <button @click="openAddDish"
+                    style="margin-left:auto;padding:0.5rem 1rem;border-radius:0.75rem;background:#6F4E37;color:#fff;font-size:0.8125rem;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;gap:0.375rem;flex-shrink:0;">
+              <i class="bi bi-plus-lg"></i> Add Dish
+            </button>
+          </div>
+
+          <!-- Dish Cards Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 stagger">
+            <div v-for="dish in filteredMenu" :key="dish.id" class="panel slide-up" style="overflow:visible;">
+              <div style="padding:1.25rem;">
+
+                <!-- Top row: photo/emoji + toggle -->
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.625rem;">
+                  <div style="width:48px;height:48px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#F0EBE3;display:flex;align-items:center;justify-content:center;">
+                    <img v-if="dish.photoPreview" :src="dish.photoPreview" style="width:100%;height:100%;object-fit:cover;" />
+                    <span v-else style="font-size:1.75rem;line-height:1;">{{ dish.image }}</span>
+                  </div>
+                  <label class="toggle-wrap">
+                    <input type="checkbox" :checked="dish.available" @change="toggleDish(dish.id)" />
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+
+                <h4 style="font-weight:700;font-size:0.9375rem;margin-bottom:0.2rem;">{{ dish.name }}</h4>
+                <p style="font-size:0.75rem;color:#9C8E84;margin-bottom:0.75rem;">{{ dish.category }}</p>
+
+                <!-- Cost / Price / Margin summary -->
+                <div style="background:#F8F5F0;border-radius:0.5rem;padding:0.625rem 0.75rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.25rem;text-align:center;margin-bottom:0.75rem;">
+                  <div>
+                    <div style="font-size:0.625rem;color:#9C8E84;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Cost</div>
+                    <div style="font-size:0.875rem;font-weight:700;color:#E63946;">₹{{ dish.cost }}</div>
+                  </div>
+                  <div>
+                    <div style="font-size:0.625rem;color:#9C8E84;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Price</div>
+                    <div style="font-size:0.875rem;font-weight:700;color:#6F4E37;">₹{{ dish.price }}</div>
+                  </div>
+                  <div>
+                    <div style="font-size:0.625rem;color:#9C8E84;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Margin</div>
+                    <div :style="`font-size:0.875rem;font-weight:700;color:${((dish.price-dish.cost)/dish.price*100)>40?'#2A9D8F':'#E9A24A'}`">
+                      {{ ((dish.price - dish.cost) / dish.price * 100).toFixed(0) }}%
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Ingredient pill count -->
+                <div style="font-size:0.75rem;color:#9C8E84;margin-bottom:0.875rem;display:flex;align-items:center;gap:0.375rem;">
+                  <i class="bi bi-list-ul" style="color:#C4A882;"></i>
+                  <span>{{ dish.ingredients?.length || 0 }} ingredient{{ (dish.ingredients?.length||0)!==1?'s':'' }}</span>
+                </div>
+
+                <!-- Action buttons -->
+                <div style="display:flex;gap:0.5rem;">
+                  <button @click="openIngredientEditor(dish)"
+                          style="flex:1;padding:0.5rem;border-radius:0.625rem;background:#F0EBE3;color:#6F4E37;font-size:0.8rem;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.375rem;">
+                    <i class="bi bi-journals"></i> Ingredients
+                  </button>
+                  <button @click="openEditDish(dish)"
+                          style="padding:0.5rem 0.625rem;border-radius:0.625rem;background:#EDF7F6;color:#2A9D8F;font-size:0.8rem;border:none;cursor:pointer;" title="Edit dish info">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button @click="askDeleteDish(dish)"
+                          style="padding:0.5rem 0.625rem;border-radius:0.625rem;background:#FEE2E2;color:#E63946;font-size:0.8rem;border:none;cursor:pointer;" title="Remove dish">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+
+                <div v-if="!dish.available" style="margin-top:0.625rem;background:#FEE2E2;color:#991B1B;font-size:0.75rem;font-weight:600;text-align:center;padding:0.375rem;border-radius:0.375rem;">
+                  🚫 Currently Unavailable
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════════ PRICING ════════════ -->
+        <div v-else-if="currentPage === 'pricing'" key="pricing" class="slide-up">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+            <!-- LEFT: Dish selector + ingredient breakdown -->
+            <div class="panel" style="display:flex;flex-direction:column;max-height:calc(100vh - 120px);">
+
+              <!-- Search bar -->
+              <div style="padding:1rem 1rem 0.75rem;border-bottom:1px solid rgba(111,78,55,0.1);flex-shrink:0;">
+                <div style="position:relative;">
+                  <i class="bi bi-search" style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:#9C8E84;font-size:0.875rem;"></i>
+                  <input v-model="pricingSearch" type="text" class="search-input" placeholder="Search dishes…" />
+                </div>
+              </div>
+
+              <!-- Dish list -->
+              <div class="scroll-y" style="flex-shrink:0;max-height:220px;border-bottom:1px solid rgba(111,78,55,0.1);">
+                <div v-if="filteredPricingMenu.length === 0" style="padding:1.5rem;text-align:center;color:#9C8E84;font-size:0.875rem;">
+                  No dishes found
+                </div>
+                <div v-for="dish in filteredPricingMenu" :key="dish.id"
+                     @click="selectPricingDish(dish)"
+                     :style="`display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;cursor:pointer;border-bottom:1px solid rgba(111,78,55,0.06);transition:background 0.15s;${selectedPricingDish?.id===dish.id?'background:#FDF4ED;border-left:3px solid #6F4E37;':'border-left:3px solid transparent;'}`">
+                  <div style="width:38px;height:38px;border-radius:9px;overflow:hidden;background:#F0EBE3;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <img v-if="dish.photoPreview" :src="dish.photoPreview" style="width:100%;height:100%;object-fit:cover;" />
+                    <span v-else style="font-size:1.25rem;line-height:1;">{{ dish.image }}</span>
+                  </div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-weight:600;font-size:0.875rem;color:#1A1208;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ dish.name }}</div>
+                    <div style="font-size:0.7rem;color:#9C8E84;margin-top:1px;">{{ dish.category }} · {{ (dish.ingredients||[]).length }} ingredients</div>
+                  </div>
+                  <div style="text-align:right;flex-shrink:0;">
+                    <div style="font-weight:700;font-size:0.875rem;color:#6F4E37;">₹{{ dish.price }}</div>
+                    <div style="font-size:0.7rem;color:#9C8E84;">cost ₹{{ dish.cost }}</div>
+                  </div>
+                  <i :class="selectedPricingDish?.id===dish.id?'bi bi-chevron-right':''" style="color:#6F4E37;font-size:0.75rem;flex-shrink:0;width:12px;"></i>
+                </div>
+              </div>
+
+              <!-- Ingredient breakdown for selected dish -->
+              <div class="scroll-y" style="flex:1;overflow-y:auto;">
+                <!-- No dish selected -->
+                <div v-if="!selectedPricingDish" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:200px;color:#9C8E84;text-align:center;padding:2rem;">
+                  <div style="font-size:2.5rem;margin-bottom:0.5rem;">👆</div>
+                  <div style="font-weight:600;font-size:0.9375rem;">Select a dish above</div>
+                  <div style="font-size:0.8125rem;margin-top:0.25rem;">to view its ingredient cost breakdown</div>
+                </div>
+
+                <!-- Selected dish ingredient details -->
+                <div v-else>
+                  <!-- Dish header -->
+                  <div style="padding:0.875rem 1rem;background:#FDF4ED;border-bottom:1px solid rgba(111,78,55,0.1);display:flex;align-items:center;gap:0.625rem;">
+                    <div style="width:32px;height:32px;border-radius:8px;overflow:hidden;background:#F0EBE3;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      <img v-if="selectedPricingDish.photoPreview" :src="selectedPricingDish.photoPreview" style="width:100%;height:100%;object-fit:cover;" />
+                      <span v-else style="font-size:1.1rem;">{{ selectedPricingDish.image }}</span>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-weight:700;font-size:0.9375rem;color:#3D2314;">{{ selectedPricingDish.name }}</div>
+                      <div style="font-size:0.7rem;color:#9C8E84;">{{ selectedPricingDish.category }}</div>
+                    </div>
+                    <span :class="selectedPricingDish.available?'badge badge-ok':'badge badge-danger'" style="flex-shrink:0;">
+                      {{ selectedPricingDish.available ? '✓ Active' : '✗ Off' }}
+                    </span>
+                  </div>
+
+                  <!-- Ingredient cost header with dropdown toggle -->
+                  <div style="padding:0.625rem 1rem;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;"
+                       @click="showIngredientDropdown = !showIngredientDropdown">
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                      <i class="bi bi-journals" style="color:#8B6347;"></i>
+                      <span style="font-size:0.8125rem;font-weight:700;color:#4A3423;">
+                        Ingredient Details
+                        <span style="font-weight:400;color:#9C8E84;">({{ (selectedPricingDish.ingredients||[]).length }} items)</span>
+                      </span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                      <span style="font-size:0.75rem;color:#9C8E84;">Total cost: <strong style="color:#E63946;">₹{{ selectedDishIngredientTotal }}</strong></span>
+                      <div :style="`width:26px;height:26px;border-radius:6px;background:${showIngredientDropdown?'#6F4E37':'#F0EBE3'};display:flex;align-items:center;justify-content:center;transition:all 0.2s;`">
+                        <i :class="showIngredientDropdown?'bi bi-chevron-up':'bi bi-chevron-down'"
+                           :style="`font-size:0.75rem;color:${showIngredientDropdown?'white':'#6F4E37'}`"></i>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Ingredient dropdown table -->
+                  <div v-if="showIngredientDropdown"
+                       style="border-top:1px solid rgba(111,78,55,0.08);border-bottom:1px solid rgba(111,78,55,0.08);background:#FAFAF7;">
+                    <div v-if="!selectedPricingDish.ingredients || selectedPricingDish.ingredients.length===0"
+                         style="padding:1.25rem;text-align:center;color:#9C8E84;font-size:0.8125rem;">
+                      <i class="bi bi-inbox" style="display:block;font-size:1.5rem;margin-bottom:0.375rem;"></i>
+                      No ingredients yet. Add them in Menu Management.
+                    </div>
+                    <table v-else style="width:100%;border-collapse:collapse;">
+                      <thead>
+                        <tr style="background:#F0EBE3;">
+                          <th style="padding:0.45rem 0.875rem;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#8B6347;text-align:left;">Ingredient</th>
+                          <th style="padding:0.45rem 0.875rem;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#8B6347;text-align:center;">Qty</th>
+                          <th style="padding:0.45rem 0.875rem;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#8B6347;text-align:center;">Unit</th>
+                          <th style="padding:0.45rem 0.875rem;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#8B6347;text-align:right;">Cost</th>
+                          <th style="padding:0.45rem 0.875rem;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#8B6347;text-align:right;">Share</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(ing, idx) in selectedPricingDish.ingredients" :key="ing.id"
+                            style="border-top:1px solid rgba(111,78,55,0.07);"
+                            :style="idx%2===1?'background:rgba(248,245,240,0.6);':''">
+                          <td style="padding:0.5rem 0.875rem;">
+                            <div style="display:flex;align-items:center;gap:0.5rem;">
+                              <div style="width:7px;height:7px;border-radius:50%;background:#C4A882;flex-shrink:0;"></div>
+                              <span style="font-size:0.8125rem;font-weight:600;color:#1A1208;">{{ ing.name }}</span>
+                            </div>
+                          </td>
+                          <td style="padding:0.5rem 0.875rem;text-align:center;font-size:0.8125rem;font-weight:600;color:#6B5744;">{{ ing.qty }}</td>
+                          <td style="padding:0.5rem 0.875rem;text-align:center;">
+                            <span style="background:#F0EBE3;color:#6B5744;font-size:0.68rem;font-weight:700;padding:0.1rem 0.45rem;border-radius:2rem;">{{ ing.unit }}</span>
+                          </td>
+                          <td style="padding:0.5rem 0.875rem;text-align:right;font-weight:700;color:#E63946;font-size:0.8125rem;">₹{{ ing.cost }}</td>
+                          <td style="padding:0.5rem 0.875rem;text-align:right;">
+                            <div style="display:flex;align-items:center;justify-content:flex-end;gap:0.375rem;">
+                              <div style="width:36px;height:4px;background:#EDE8E0;border-radius:3px;overflow:hidden;">
+                                <div :style="`height:4px;background:#6F4E37;border-radius:3px;width:${selectedDishIngredientTotal>0?Math.min(100,(ing.cost/selectedDishIngredientTotal*100)):0}%`"></div>
+                              </div>
+                              <span style="font-size:0.7rem;font-weight:600;color:#8B6347;min-width:28px;text-align:right;">
+                                {{ selectedDishIngredientTotal>0?(ing.cost/selectedDishIngredientTotal*100).toFixed(0):0 }}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                      <tfoot>
+                        <tr style="background:#FDF4ED;border-top:2px solid rgba(111,78,55,0.15);">
+                          <td colspan="3" style="padding:0.5rem 0.875rem;font-size:0.8rem;font-weight:700;color:#4A3423;">Total Food Cost</td>
+                          <td style="padding:0.5rem 0.875rem;text-align:right;font-weight:700;color:#E63946;font-size:0.9rem;">₹{{ selectedDishIngredientTotal }}</td>
+                          <td style="padding:0.5rem 0.875rem;text-align:right;font-size:0.75rem;font-weight:700;color:#8B6347;">100%</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  <!-- Editable ingredient cost rows (original style) -->
+                  <div style="padding:0.75rem 1rem 0;">
+                    <p style="font-size:0.75rem;color:#9C8E84;margin-bottom:0.5rem;">Edit costs below to recalculate price →</p>
+                    <div v-for="ing in selectedPricingDish.ingredients" :key="ing.id"
+                         style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid rgba(111,78,55,0.06);">
+                      <div style="flex:1;font-size:0.875rem;font-weight:500;color:#1A1208;">{{ ing.name }}</div>
+                      <div style="font-size:0.75rem;color:#9C8E84;min-width:60px;">{{ ing.qty }} {{ ing.unit }}</div>
+                      <div style="display:flex;align-items:center;gap:0.25rem;">
+                        <span style="font-size:0.875rem;color:#9C8E84;">₹</span>
+                        <input type="number" v-model.number="ing.cost" class="num-input" :min="0"
+                               @input="recalcSelectedDishCost" style="width:70px;" />
+                      </div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.625rem 0;font-weight:700;border-top:2px solid rgba(111,78,55,0.15);margin-top:0.25rem;">
+                      <span style="font-size:0.875rem;">Total Ingredient Cost</span>
+                      <span style="color:#E63946;font-size:1.1rem;">₹{{ selectedDishIngredientTotal }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT: Margin slider + live preview (original, now driven by selected dish) -->
+            <div class="panel">
+              <div class="p-4 border-b" style="border-color:rgba(111,78,55,0.1)">
+                <h3 style="font-weight:700;font-size:0.9375rem;">Profit Margin & Final Price</h3>
+                <p v-if="selectedPricingDish" style="font-size:0.8rem;color:#9C8E84;margin-top:2px;">for {{ selectedPricingDish.name }}</p>
+                <p v-else style="font-size:0.8rem;color:#9C8E84;margin-top:2px;">Select a dish to begin</p>
+              </div>
+              <div style="padding:1.5rem;">
+                <!-- Live price display -->
+                <div style="text-align:center;padding:1.5rem;background:linear-gradient(135deg,#4A3423,#6F4E37);border-radius:1rem;margin-bottom:1.5rem;">
+                  <div style="font-size:0.75rem;color:rgba(248,245,240,0.7);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Final Selling Price</div>
+                  <div style="font-family:'Playfair Display',serif;font-size:2.75rem;font-weight:700;color:#F8F5F0;line-height:1;">
+                    ₹{{ pricingFinalPrice }}
+                  </div>
+                  <div style="font-size:0.8125rem;color:rgba(248,245,240,0.6);margin-top:0.375rem;">
+                    ₹{{ selectedDishIngredientTotal }} cost + {{ profitMargin }}% margin
+                  </div>
+                </div>
+
+                <!-- Margin slider -->
+                <div style="margin-bottom:1.5rem;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.625rem;">
+                    <label style="font-weight:700;font-size:0.875rem;">Profit Margin</label>
+                    <span style="background:#F0EBE3;padding:0.25rem 0.75rem;border-radius:2rem;font-weight:700;font-size:0.9375rem;color:#6F4E37;">{{ profitMargin }}%</span>
+                  </div>
+                  <input type="range" v-model.number="profitMargin" min="10" max="80" step="1" />
+                  <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:#9C8E84;margin-top:0.25rem;">
+                    <span>10%</span><span>80%</span>
+                  </div>
+                </div>
+
+                <!-- Breakdown bars -->
+                <div style="background:#F8F5F0;border-radius:0.75rem;padding:1rem;margin-bottom:1.25rem;">
+                  <div style="margin-bottom:0.625rem;">
+                    <div style="display:flex;justify-content:space-between;font-size:0.8125rem;font-weight:600;margin-bottom:0.25rem;">
+                      <span>Cost</span><span style="color:#E63946;">₹{{ selectedDishIngredientTotal }} ({{ pricingCostPercent }}%)</span>
+                    </div>
+                    <div style="height:8px;background:#EDE8E0;border-radius:4px;">
+                      <div :style="`width:${pricingCostPercent}%;height:8px;background:#E63946;border-radius:4px;transition:width 0.3s`"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;font-size:0.8125rem;font-weight:600;margin-bottom:0.25rem;">
+                      <span>Profit</span><span style="color:#2A9D8F;">₹{{ pricingProfitAmount }} ({{ profitMargin }}%)</span>
+                    </div>
+                    <div style="height:8px;background:#EDE8E0;border-radius:4px;">
+                      <div :style="`width:${profitMargin}%;height:8px;background:#2A9D8F;border-radius:4px;transition:width 0.3s`"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 text-center" style="margin-bottom:1.25rem;">
+                  <div style="padding:0.625rem;background:#FEF3C7;border-radius:0.5rem;">
+                    <div style="font-size:0.65rem;color:#92400E;font-weight:700;text-transform:uppercase;">Break Even</div>
+                    <div style="font-size:0.9rem;font-weight:700;color:#92400E;margin-top:0.125rem;">₹{{ selectedDishIngredientTotal }}</div>
+                  </div>
+                  <div style="padding:0.625rem;background:#D1F5F0;border-radius:0.5rem;">
+                    <div style="font-size:0.65rem;color:#1A6B63;font-weight:700;text-transform:uppercase;">Profit/Dish</div>
+                    <div style="font-size:0.9rem;font-weight:700;color:#1A6B63;margin-top:0.125rem;">₹{{ pricingProfitAmount }}</div>
+                  </div>
+                  <div style="padding:0.625rem;background:#F0EBE3;border-radius:0.5rem;">
+                    <div style="font-size:0.65rem;color:#6B5744;font-weight:700;text-transform:uppercase;">Final Price</div>
+                    <div style="font-size:0.9rem;font-weight:700;color:#6F4E37;margin-top:0.125rem;">₹{{ pricingFinalPrice }}</div>
+                  </div>
+                </div>
+
+                <button class="btn-primary" style="width:100%;" @click="applyPriceToMenu">
+                  <i class="bi bi-check-circle me-1"></i> Apply Price to Menu
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ════════════ ANALYTICS ════════════ -->
+        <div v-else-if="currentPage === 'analytics'" key="analytics" class="slide-up">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <!-- Revenue SVG Line Chart -->
+            <div class="panel">
+              <div class="p-4 border-b" style="border-color:rgba(111,78,55,0.1)">
+                <h3 style="font-weight:700;font-size:0.9375rem;">Revenue Trend (7 Days)</h3>
+              </div>
+              <div class="p-4">
+                <svg viewBox="0 0 420 200" style="width:100%;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+                  <!-- Grid lines -->
+                  <line x1="40" y1="10" x2="40" y2="160" stroke="rgba(111,78,55,0.1)" stroke-width="1"/>
+                  <line x1="40" y1="160" x2="410" y2="160" stroke="rgba(111,78,55,0.1)" stroke-width="1"/>
+                  <line v-for="(r,i) in [0,1,2,3]" :key="i" x1="40" :y1="10+i*50" x2="410" :y2="10+i*50" stroke="rgba(111,78,55,0.07)" stroke-width="1" stroke-dasharray="4,4"/>
+                  <!-- Y labels -->
+                  <text v-for="(r,i) in [38,28,19,9]" :key="i" x="35" :y="10+i*50+4" text-anchor="end" font-size="9" fill="#9C8E84" font-family="DM Sans">₹{{r}}k</text>
+                  <!-- Fill area -->
+                  <defs>
+                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#6F4E37" stop-opacity="0.18"/>
+                      <stop offset="100%" stop-color="#6F4E37" stop-opacity="0.01"/>
+                    </linearGradient>
+                  </defs>
+                  <polygon :points="svgRevFill" fill="url(#revGrad)"/>
+                  <!-- Line -->
+                  <polyline :points="svgRevLine" fill="none" stroke="#6F4E37" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+                  <!-- Points + labels -->
+                  <g v-for="(d,i) in revenueChart" :key="d.day">
+                    <circle :cx="40+i*61.7" :cy="svgRevY(d.revenue)" r="4" fill="#6F4E37" stroke="white" stroke-width="2"/>
+                    <text :x="40+i*61.7" y="178" text-anchor="middle" font-size="10" fill="#6B5744" font-family="DM Sans" font-weight="600">{{d.day}}</text>
+                  </g>
+                </svg>
+              </div>
+            </div>
+            <!-- Orders SVG Bar Chart -->
+            <div class="panel">
+              <div class="p-4 border-b" style="border-color:rgba(111,78,55,0.1)">
+                <h3 style="font-weight:700;font-size:0.9375rem;">Orders Volume (7 Days)</h3>
+              </div>
+              <div class="p-4">
+                <svg viewBox="0 0 420 200" style="width:100%;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+                  <line x1="40" y1="10" x2="40" y2="160" stroke="rgba(58,175,169,0.15)" stroke-width="1"/>
+                  <line x1="40" y1="160" x2="410" y2="160" stroke="rgba(58,175,169,0.15)" stroke-width="1"/>
+                  <line v-for="(r,i) in [0,1,2,3]" :key="i" x1="40" :y1="10+i*50" x2="410" :y2="10+i*50" stroke="rgba(58,175,169,0.08)" stroke-width="1" stroke-dasharray="4,4"/>
+                  <text v-for="(v,i) in [138,103,69,34]" :key="i" x="35" :y="10+i*50+4" text-anchor="end" font-size="9" fill="#9C8E84" font-family="DM Sans">{{v}}</text>
+                  <g v-for="(d,i) in revenueChart" :key="d.day">
+                    <rect :x="40+i*61.7-16" :y="svgOrdY(d.orders)" :width="32" :height="160-svgOrdY(d.orders)" fill="#3AAFA9" opacity="0.85" rx="4"/>
+                    <text :x="40+i*61.7" y="178" text-anchor="middle" font-size="10" fill="#6B5744" font-family="DM Sans" font-weight="600">{{d.day}}</text>
+                    <text :x="40+i*61.7" :y="svgOrdY(d.orders)-5" text-anchor="middle" font-size="9" fill="#3AAFA9" font-family="DM Sans" font-weight="700">{{d.orders}}</text>
+                  </g>
+                </svg>
+              </div>
+            </div>
+            <!-- Top dishes -->
+            <div class="panel lg:col-span-2">
+              <div class="p-4 border-b" style="border-color:rgba(111,78,55,0.1)">
+                <h3 style="font-weight:700;font-size:0.9375rem;">Top Performing Dishes by Revenue</h3>
+              </div>
+              <div style="padding:1rem;overflow-x:auto;">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>Dish</th><th>Category</th><th>Orders</th><th>Revenue</th><th>Margin</th><th>Trend</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="dish in topDishes" :key="dish.name">
+                      <td style="font-weight:600;">{{ dish.image }} {{ dish.name }}</td>
+                      <td style="color:#9C8E84;font-size:0.8rem;">{{ dish.category }}</td>
+                      <td style="font-weight:600;">{{ dish.orders }}</td>
+                      <td style="font-weight:700;color:#6F4E37;">₹{{ dish.revenue.toLocaleString() }}</td>
+                      <td><span :style="`color:${dish.margin>40?'#2A9D8F':'#E9A24A'};font-weight:600`">{{ dish.margin }}%</span></td>
+                      <td><span style="color:#2A9D8F;font-weight:600;font-size:0.875rem;">↑ {{ dish.trend }}%</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════════ SETTINGS ════════════ -->
+        <div v-else-if="currentPage === 'settings'" key="settings" class="slide-up">
+
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5" style="max-width:860px;">
+            <div class="panel">
+              <div class="p-4 border-b" style="border-color:rgba(111,78,55,0.1)">
+                <h3 style="font-weight:700;font-size:0.9375rem;">Restaurant Info</h3>
+              </div>
+              <div style="padding:1.25rem;display:flex;flex-direction:column;gap:1rem;">
+                <div v-for="f in settingsFields" :key="f.label">
+                  <label style="font-size:0.8125rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.375rem;">{{ f.label }}</label>
+                  <input :type="f.type || 'text'" :value="f.value" class="search-input" style="max-width:100%;border-radius:0.5rem;" />
+                </div>
+                <button class="btn-primary" style="margin-top:0.25rem;">Save Changes</button>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="p-4 border-b" style="border-color:rgba(111,78,55,0.1)">
+                <h3 style="font-weight:700;font-size:0.9375rem;">Notifications</h3>
+              </div>
+              <div style="padding:1.25rem;display:flex;flex-direction:column;gap:1rem;">
+                <div v-for="n in notificationSettings" :key="n.label" style="display:flex;align-items:center;justify-content:space-between;padding:0.625rem 0;border-bottom:1px solid rgba(111,78,55,0.07);">
+                  <div>
+                    <div style="font-weight:600;font-size:0.875rem;">{{ n.label }}</div>
+                    <div style="font-size:0.75rem;color:#9C8E84;margin-top:0.125rem;">{{ n.desc }}</div>
+                  </div>
+                  <label class="toggle-wrap">
+                    <input type="checkbox" :checked="n.enabled" @change="n.enabled = !n.enabled" />
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+
+          </div>
+        </div>
+
+        <!-- ════════════ STAFF CONTROL ════════════ -->
+        <div v-else-if="currentPage === 'staff'" key="staff" class="slide-up">
+
+          <!-- QR Modal (shared) -->
+          <div v-if="qrModal.open" style="position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;" @click.self="closeQRModal">
+            <div style="position:absolute;inset:0;background:rgba(30,20,10,0.5);backdrop-filter:blur(4px);"></div>
+            <div style="position:relative;background:#fff;border-radius:1.25rem;width:100%;max-width:640px;box-shadow:0 24px 64px rgba(111,78,55,0.25);z-index:1;overflow:hidden;max-height:90vh;display:flex;flex-direction:column;">
+              <div style="padding:1.25rem 1.5rem;border-bottom:1px solid rgba(111,78,55,0.1);background:linear-gradient(135deg,#4A3423,#6F4E37);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                  <div style="width:38px;height:38px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;">
+                    {{ qrModal.role === 'chef' ? '👨‍🍳' : qrModal.role === 'waiter' ? '🧑‍🍽️' : '🪑' }}
+                  </div>
+                  <div>
+                    <div style="font-family:'Playfair Display',serif;font-weight:700;font-size:1.125rem;color:#F8F5F0;">
+                      {{ qrModal.role === 'chef' ? 'Chef QR Code' : qrModal.role === 'waiter' ? 'Waiter QR Code' : 'Table QR Codes' }}
+                    </div>
+                    <div style="font-size:0.75rem;color:rgba(248,245,240,0.65);">DineFlow Access Pass</div>
+                  </div>
+                </div>
+                <button @click="closeQRModal" style="background:rgba(255,255,255,0.12);border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;color:white;font-size:1.25rem;display:flex;align-items:center;justify-content:center;">✕</button>
+              </div>
+              <div v-if="qrModal.tableCountInput" style="padding:2rem;text-align:center;">
+                <div style="font-size:2.5rem;margin-bottom:0.75rem;">🪑</div>
+                <h3 style="font-weight:700;font-size:1.1rem;margin-bottom:0.5rem;color:#1A1208;">How many tables?</h3>
+                <p style="color:#9C8E84;font-size:0.875rem;margin-bottom:1.5rem;">Enter the number of tables (max 50)</p>
+                <div style="display:flex;gap:0.75rem;align-items:center;justify-content:center;margin-bottom:1.5rem;">
+                  <input v-model="qrModal.tableCount" type="number" min="1" max="50" placeholder="e.g. 12" class="search-input" style="width:140px;text-align:center;font-size:1.25rem;font-weight:700;padding:0.75rem;" @keyup.enter="generateQRCodes" />
+                </div>
+                <div style="display:flex;gap:0.75rem;justify-content:center;">
+                  <button @click="closeQRModal" style="padding:0.6rem 1.5rem;border-radius:0.75rem;background:#F0EBE3;color:#6B5744;font-weight:600;border:none;cursor:pointer;">Cancel</button>
+                  <button @click="generateQRCodes" style="padding:0.6rem 1.75rem;border-radius:0.75rem;background:#6F4E37;color:#fff;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;gap:0.5rem;"><i class="bi bi-qr-code"></i> Generate QR Codes</button>
+                </div>
+              </div>
+              <div v-else-if="qrModal.generatedQRs.length > 0" style="padding:1.25rem;overflow-y:auto;flex:1;">
+                <div style="margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;">
+                  <div style="font-size:0.875rem;color:#6B5744;font-weight:600;">{{ qrModal.generatedQRs.length }} QR code{{ qrModal.generatedQRs.length>1?'s':''}} generated</div>
+                  <button onclick="window.print()" style="padding:0.4rem 0.875rem;border-radius:0.5rem;background:#F0EBE3;color:#6F4E37;font-size:0.8rem;font-weight:600;border:1.5px solid #D4C4B8;cursor:pointer;display:flex;align-items:center;gap:0.375rem;"><i class="bi bi-printer"></i> Print All</button>
+                </div>
+                <div :style="`display:grid;grid-template-columns:repeat(${Math.min(qrModal.generatedQRs.length, qrModal.role==='tables'&&qrModal.generatedQRs.length>4?3:qrModal.generatedQRs.length>1?2:1)},1fr);gap:1rem;`">
+                  <div v-for="(qr, idx) in qrModal.generatedQRs" :key="qr.svgId" style="background:#F8F5F0;border-radius:0.875rem;padding:1rem;display:flex;flex-direction:column;align-items:center;gap:0.5rem;border:1px solid rgba(111,78,55,0.1);">
+                    <div :id="qr.svgId"></div>
+                    <div style="font-size:0.7rem;color:#9C8E84;word-break:break-all;text-align:center;max-width:180px;">{{ qr.url }}</div>
+                  </div>
+                </div>
+              </div>
+              <div v-else style="padding:3rem;text-align:center;color:#9C8E84;"><div style="font-size:2rem;margin-bottom:0.5rem;">⏳</div><div>Generating QR codes…</div></div>
+            </div>
+          </div>
+
+          <div style="max-width:900px;">
+            <!-- Page header -->
+            <div style="margin-bottom:1.5rem;">
+              <h2 style="font-family:'Playfair Display',serif;font-size:1.375rem;font-weight:700;color:#1A1208;margin-bottom:0.25rem;">Staff Access Control</h2>
+              <p style="font-size:0.875rem;color:#9C8E84;">Generate QR codes for staff login and manage role-based access to DineFlow.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+              <!-- ── Chef Card ── -->
+              <div class="panel" style="border-top:3px solid #6F4E37;">
+                <div class="p-4 border-b" style="border-color:rgba(111,78,55,0.1);display:flex;align-items:center;gap:0.75rem;">
+                  <div style="width:44px;height:44px;background:linear-gradient(135deg,#4A3423,#6F4E37);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">👨‍🍳</div>
+                  <div>
+                    <h3 style="font-weight:700;font-size:1rem;color:#1A1208;">Chef</h3>
+                    <p style="font-size:0.75rem;color:#9C8E84;margin-top:1px;">Kitchen station access</p>
+                  </div>
+                </div>
+                <div style="padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;">
+                  <div style="background:#F8F5F0;border-radius:0.625rem;padding:0.875rem;font-size:0.8125rem;color:#6B5744;">
+                    <i class="bi bi-info-circle" style="margin-right:0.375rem;color:#C4A882;"></i>
+                    Chefs scan this QR to access the kitchen order queue and recipe system.
+                  </div>
+                  <button @click="openQRModal('chef')"
+                          style="width:100%;padding:0.7rem;border-radius:0.625rem;background:#6F4E37;color:#fff;font-size:0.875rem;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:background 0.2s;"
+                          onmouseover="this.style.background='#8B6347'" onmouseout="this.style.background='#6F4E37'">
+                    <i class="bi bi-qr-code"></i> Generate Chef QR Code
+                  </button>
+                  <a href="chef-dashboard-mobile.html" target="_blank"
+                     style="width:100%;padding:0.7rem;border-radius:0.625rem;background:transparent;color:#6F4E37;font-size:0.875rem;font-weight:600;border:1.5px solid #6F4E37;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:all 0.2s;text-decoration:none;"
+                     onmouseover="this.style.background='#6F4E37';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#6F4E37'">
+                    <i class="bi bi-box-arrow-up-right"></i> Open Chef Dashboard
+                  </a>
+                </div>
+              </div>
+
+              <!-- ── Waiter Card ── -->
+              <div class="panel" style="border-top:3px solid #3AAFA9;">
+                <div class="p-4 border-b" style="border-color:rgba(58,175,169,0.15);display:flex;align-items:center;gap:0.75rem;">
+                  <div style="width:44px;height:44px;background:linear-gradient(135deg,#2A8F8A,#3AAFA9);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">🧑‍🍽️</div>
+                  <div>
+                    <h3 style="font-weight:700;font-size:1rem;color:#1A1208;">Waiter</h3>
+                    <p style="font-size:0.75rem;color:#9C8E84;margin-top:1px;">Service floor access</p>
+                  </div>
+                </div>
+                <div style="padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;">
+                  <div style="background:#F0FDFC;border-radius:0.625rem;padding:0.875rem;font-size:0.8125rem;color:#1A6B63;">
+                    <i class="bi bi-info-circle" style="margin-right:0.375rem;color:#3AAFA9;"></i>
+                    Waiters scan this QR to access table management, orders and billing.
+                  </div>
+                  <button @click="openQRModal('waiter')"
+                          style="width:100%;padding:0.7rem;border-radius:0.625rem;background:#3AAFA9;color:#fff;font-size:0.875rem;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:background 0.2s;"
+                          onmouseover="this.style.background='#2A8F8A'" onmouseout="this.style.background='#3AAFA9'">
+                    <i class="bi bi-qr-code"></i> Generate Waiter QR Code
+                  </button>
+                  <a href="waiter.html" target="_blank"
+                     style="width:100%;padding:0.7rem;border-radius:0.625rem;background:transparent;color:#3AAFA9;font-size:0.875rem;font-weight:600;border:1.5px solid #3AAFA9;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:all 0.2s;text-decoration:none;"
+                     onmouseover="this.style.background='#3AAFA9';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#3AAFA9'">
+                    <i class="bi bi-box-arrow-up-right"></i> Open Waiter Dashboard
+                  </a>
+                </div>
+              </div>
+
+              <!-- ── Tables QR ── -->
+              <div class="panel md:col-span-2" style="border-top:3px solid #F4A261;">
+                <div class="p-4 border-b" style="border-color:rgba(244,162,97,0.2);display:flex;align-items:center;gap:0.75rem;">
+                  <div style="width:44px;height:44px;background:linear-gradient(135deg,#D4842A,#F4A261);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">🪑</div>
+                  <div>
+                    <h3 style="font-weight:700;font-size:1rem;color:#1A1208;">Table QR Codes</h3>
+                    <p style="font-size:0.75rem;color:#9C8E84;margin-top:1px;">Per-table digital menu access for guests</p>
+                  </div>
+                </div>
+                <div style="padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;">
+                  <div style="background:#FFFBF5;border-radius:0.625rem;padding:0.875rem;font-size:0.8125rem;color:#92400E;">
+                    <i class="bi bi-info-circle" style="margin-right:0.375rem;color:#F4A261;"></i>
+                    Guests scan table QRs to view the digital menu and place orders. Generate one per table.
+                  </div>
+                  <button @click="openQRModal('tables')"
+                          style="max-width:320px;padding:0.7rem;border-radius:0.625rem;background:#F4A261;color:#fff;font-size:0.875rem;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:background 0.2s;"
+                          onmouseover="this.style.background='#D4842A'" onmouseout="this.style.background='#F4A261'">
+                    <i class="bi bi-qr-code"></i> Generate Table QR Codes
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </transition>
+    </main>
+  </div>
+
+  <!-- Mobile bottom navigation -->
+  <nav class="mobile-bottom-nav">
+    <div v-for="item in mobileNavItems" :key="item.id"
+         class="mobile-nav-item" :class="{ active: currentPage === item.id }"
+         @click="navigate(item.id)">
+      <i :class="item.icon"></i>
+      <span>{{ item.label }}</span>
+    </div>
+  </nav>
+
+  <!-- Toast container -->
+  <div class="toast-container">
+    <div v-for="t in toasts" :key="t.id" class="toast">
+      <span>{{ t.icon }}</span>{{ t.message }}
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// ─── Mock Data (inline for single-file) ─────────────────────────────────────
+// In production, replace these with: import { api } from './data.js'
+// and call api.getStats(), api.getPendingOrders(), etc.
+
+const mockData = {
+  stats: { revenue: 24850, weekRevenue: 148320, activeOrders: 14, lowStockAlerts: 5, tablesOccupied: 18, totalTables: 24, avgOrderValue: 1775, completedOrders: 87, cancelledOrders: 3, trend: 12.4 },
+  revenueChart: [
+    { day: "Mon", revenue: 18200, orders: 64 },
+    { day: "Tue", revenue: 21500, orders: 78 },
+    { day: "Wed", revenue: 19800, orders: 71 },
+    { day: "Thu", revenue: 23400, orders: 84 },
+    { day: "Fri", revenue: 31200, orders: 112 },
+    { day: "Sat", revenue: 38500, orders: 138 },
+    { day: "Sun", revenue: 24850, orders: 87 },
+  ],
+  orderStatus: [
+    { label: "Completed", value: 87, color: "#2A9D8F" },
+    { label: "Preparing", value: 14, color: "#F4A261" },
+    { label: "Pending", value: 6, color: "#E9C46A" },
+    { label: "Cancelled", value: 3, color: "#E63946" },
+  ],
+  pendingOrders: [
+    { id: "ORD-1042", table: 7, customer: "Arjun Mehta", items: [{ name: "Butter Chicken", qty: 2, cost: 320, price: 580 }, { name: "Garlic Naan", qty: 4, cost: 40, price: 80 }, { name: "Mango Lassi", qty: 2, cost: 60, price: 120 }], total: 1680, time: "2 min ago", special: "No onions in curry" },
+    { id: "ORD-1043", table: 3, customer: "Priya Sharma", items: [{ name: "Paneer Tikka", qty: 1, cost: 180, price: 380 }, { name: "Dal Makhani", qty: 1, cost: 120, price: 280 }, { name: "Jeera Rice", qty: 2, cost: 80, price: 160 }], total: 1060, time: "5 min ago", special: "" },
+    { id: "ORD-1044", table: 12, customer: "Rahul Verma", items: [{ name: "Chicken Biryani", qty: 3, cost: 280, price: 520 }, { name: "Raita", qty: 3, cost: 30, price: 60 }, { name: "Cold Coffee", qty: 2, cost: 70, price: 150 }], total: 2040, time: "8 min ago", special: "Extra spicy" },
+    { id: "ORD-1045", table: 5, customer: "Sneha Patel", items: [{ name: "Veg Thali", qty: 2, cost: 200, price: 420 }, { name: "Gulab Jamun", qty: 4, cost: 35, price: 80 }], total: 1160, time: "11 min ago", special: "Jain – no root vegetables" },
+    { id: "ORD-1046", table: 9, customer: "Vikram Singh", items: [{ name: "Fish Curry", qty: 2, cost: 350, price: 640 }, { name: "Steamed Rice", qty: 2, cost: 50, price: 100 }, { name: "Nimbu Pani", qty: 3, cost: 25, price: 60 }], total: 1580, time: "14 min ago", special: "" },
+  ],
+  inventory: [
+    { id:1,  name:"Chicken (Broiler)",  unit:"kg",  stock:8.5,  threshold:10, category:"Meat & Poultry",  price:180, supplier:"Fresh Farms" },
+    { id:2,  name:"Paneer",             unit:"kg",  stock:3.2,  threshold:5,  category:"Dairy",  price:320, supplier:"Amul Dairy" },
+    { id:3,  name:"Basmati Rice",       unit:"kg",  stock:45,   threshold:20, category:"Grains",    price:85,  supplier:"India Gate" },
+    { id:4,  name:"Tomatoes",           unit:"kg",  stock:2.1,  threshold:8,  category:"Vegetables",price:40,  supplier:"Local Market" },
+    { id:5,  name:"Onions",             unit:"kg",  stock:12,   threshold:10, category:"Vegetables",price:35,  supplier:"Local Market" },
+    { id:6,  name:"Butter",             unit:"kg",  stock:1.5,  threshold:3,  category:"Dairy",     price:480, supplier:"Amul Dairy" },
+    { id:7,  name:"Cream",              unit:"ltr", stock:4,    threshold:5,  category:"Dairy",     price:220, supplier:"Amul Dairy" },
+    { id:8,  name:"Cooking Oil",        unit:"ltr", stock:18,   threshold:10, category:"Pantry",    price:140, supplier:"Fortune" },
+    { id:9,  name:"Garam Masala",       unit:"kg",  stock:0.3,  threshold:1,  category:"Spices",    price:650, supplier:"Everest" },
+    { id:10, name:"Mutton",             unit:"kg",  stock:0,    threshold:5,  category:"Meat & Poultry",  price:650, supplier:"Fresh Farms" },
+    { id:11, name:"Fish (Pomfret)",     unit:"kg",  stock:6,    threshold:5,  category:"Seafood",  price:480, supplier:"Sea Fresh" },
+    { id:12, name:"Green Cardamom",     unit:"kg",  stock:0.8,  threshold:0.5,category:"Spices",    price:2200,supplier:"Everest" },
+    { id:13, name:"Whole Wheat Flour",  unit:"kg",  stock:22,   threshold:15, category:"Grains",    price:45,  supplier:"Aashirvaad" },
+    { id:14, name:"Mango Pulp",         unit:"kg",  stock:0.5,  threshold:3,  category:"Pantry",    price:180, supplier:"Kissan" },
+    { id:15, name:"Turmeric",           unit:"kg",  stock:2,    threshold:1,  category:"Spices",    price:180, supplier:"Everest" },
+  ],
+  menu: [
+    { id:1,  name:"Butter Chicken",    category:"Main Course", price:580, cost:320, available:true,  popular:true,  image:"🍛",
+      ingredients:[{id:1,name:"Chicken (Broiler)",qty:0.5,unit:"kg",cost:90},{id:2,name:"Butter",qty:0.03,unit:"kg",cost:14},{id:3,name:"Cream",qty:0.05,unit:"ltr",cost:22},{id:4,name:"Tomatoes",qty:0.2,unit:"kg",cost:8},{id:5,name:"Garam Masala",qty:0.01,unit:"kg",cost:6},{id:6,name:"Cooking Oil",qty:0.03,unit:"ltr",cost:4}]},
+    { id:2,  name:"Paneer Tikka",      category:"Starter",     price:380, cost:180, available:true,  popular:true,  image:"🧀",
+      ingredients:[{id:1,name:"Paneer",qty:0.15,unit:"kg",cost:48},{id:2,name:"Cream",qty:0.03,unit:"ltr",cost:13},{id:3,name:"Tomatoes",qty:0.1,unit:"kg",cost:4},{id:4,name:"Garam Masala",qty:0.01,unit:"kg",cost:6}]},
+    { id:3,  name:"Chicken Biryani",   category:"Main Course", price:520, cost:280, available:true,  popular:true,  image:"🍚",
+      ingredients:[{id:1,name:"Chicken (Broiler)",qty:0.4,unit:"kg",cost:72},{id:2,name:"Basmati Rice",qty:0.2,unit:"kg",cost:17},{id:3,name:"Onions",qty:0.15,unit:"kg",cost:5},{id:4,name:"Cooking Oil",qty:0.04,unit:"ltr",cost:6},{id:5,name:"Garam Masala",qty:0.015,unit:"kg",cost:10}]},
+    { id:4,  name:"Dal Makhani",       category:"Main Course", price:280, cost:120, available:true,  popular:false, image:"🫘",
+      ingredients:[{id:1,name:"Butter",qty:0.02,unit:"kg",cost:10},{id:2,name:"Cream",qty:0.04,unit:"ltr",cost:18},{id:3,name:"Tomatoes",qty:0.15,unit:"kg",cost:6},{id:4,name:"Garam Masala",qty:0.01,unit:"kg",cost:6}]},
+    { id:5,  name:"Mutton Rogan Josh", category:"Main Course", price:720, cost:420, available:false, popular:true,  image:"🍖",
+      ingredients:[{id:1,name:"Mutton",qty:0.5,unit:"kg",cost:325},{id:2,name:"Onions",qty:0.2,unit:"kg",cost:7},{id:3,name:"Cooking Oil",qty:0.04,unit:"ltr",cost:6},{id:4,name:"Garam Masala",qty:0.015,unit:"kg",cost:10}]},
+    { id:6,  name:"Fish Curry",        category:"Main Course", price:640, cost:350, available:true,  popular:false, image:"🐟",
+      ingredients:[{id:1,name:"Fish (Pomfret)",qty:0.5,unit:"kg",cost:240},{id:2,name:"Tomatoes",qty:0.2,unit:"kg",cost:8},{id:3,name:"Cooking Oil",qty:0.05,unit:"ltr",cost:7},{id:4,name:"Turmeric",qty:0.005,unit:"kg",cost:1}]},
+    { id:7,  name:"Garlic Naan",       category:"Breads",      price:80,  cost:40,  available:true,  popular:true,  image:"🫓",
+      ingredients:[{id:1,name:"Whole Wheat Flour",qty:0.1,unit:"kg",cost:5},{id:2,name:"Butter",qty:0.01,unit:"kg",cost:5},{id:3,name:"Cooking Oil",qty:0.01,unit:"ltr",cost:1}]},
+    { id:8,  name:"Mango Lassi",       category:"Beverages",   price:120, cost:60,  available:true,  popular:true,  image:"🥭",
+      ingredients:[{id:1,name:"Mango Pulp",qty:0.1,unit:"kg",cost:18},{id:2,name:"Cream",qty:0.05,unit:"ltr",cost:22}]},
+    { id:9,  name:"Gulab Jamun",       category:"Desserts",    price:80,  cost:35,  available:true,  popular:false, image:"🍮",
+      ingredients:[{id:1,name:"Whole Wheat Flour",qty:0.05,unit:"kg",cost:2},{id:2,name:"Butter",qty:0.005,unit:"kg",cost:2}]},
+    { id:10, name:"Veg Thali",         category:"Thali",       price:420, cost:200, available:true,  popular:true,  image:"🍽️",
+      ingredients:[{id:1,name:"Basmati Rice",qty:0.15,unit:"kg",cost:13},{id:2,name:"Paneer",qty:0.08,unit:"kg",cost:26},{id:3,name:"Butter",qty:0.02,unit:"kg",cost:10},{id:4,name:"Tomatoes",qty:0.2,unit:"kg",cost:8}]},
+    { id:11, name:"Seekh Kebab",       category:"Starter",     price:420, cost:220, available:true,  popular:false, image:"🥙",
+      ingredients:[{id:1,name:"Mutton",qty:0.25,unit:"kg",cost:163},{id:2,name:"Onions",qty:0.1,unit:"kg",cost:4},{id:3,name:"Garam Masala",qty:0.01,unit:"kg",cost:6}]},
+    { id:12, name:"Raita",             category:"Sides",       price:60,  cost:30,  available:true,  popular:false, image:"🥣",
+      ingredients:[{id:1,name:"Cream",qty:0.06,unit:"ltr",cost:13},{id:2,name:"Onions",qty:0.05,unit:"kg",cost:2}]},
+  ],
+  pricingIngredients: [
+    { id:1, name:"Chicken (500g)",      cost:90,  unit:"per portion" },
+    { id:2, name:"Spices & Masala",     cost:25,  unit:"per dish" },
+    { id:3, name:"Cream (50ml)",        cost:22,  unit:"per dish" },
+    { id:4, name:"Butter (30g)",        cost:14,  unit:"per dish" },
+    { id:5, name:"Tomato Base",         cost:30,  unit:"per dish" },
+    { id:6, name:"Gas & Utilities",     cost:15,  unit:"per dish" },
+    { id:7, name:"Labor (per dish)",    cost:40,  unit:"per dish" },
+    { id:8, name:"Overhead (10%)",      cost:23,  unit:"per dish" },
+  ],
+  recentActivity: [
+    { type:"order", message:"Order #1042 placed — Table 7",              time:"2m ago",  icon:"📋" },
+    { type:"order", message:"Order #1039 delivered — Table 2",           time:"23m ago", icon:"✅" },
+    { type:"menu",  message:"Mutton Rogan Josh marked unavailable",      time:"1h ago",  icon:"🚫" },
+    { type:"order", message:"Order #1031 approved — Table 11",           time:"1h ago",  icon:"👍" },
+    { type:"order", message:"Order #1028 delivered — Table 5",           time:"2h ago",  icon:"✅" },
+    { type:"menu",  message:"Seekh Kebab added to menu",                 time:"3h ago",  icon:"🍽️" },
+  ],
+};
+
+// ─── Vue App ─────────────────────────────────────────────────────────────────
+const { createApp, ref, reactive, computed, onMounted, nextTick, watch } = Vue;
+
+createApp({
+  setup() {
+    // ── State ────────────────────────────────────────────────────────────
+    const currentPage = ref('dashboard');
+    const sidebarCollapsed = ref(false);
+    const mobileSidebarOpen = ref(false);
+    const currentTime = ref('');
+    const toasts = ref([]);
+    const selectedOrder = ref(null);
+    const inventorySearch = ref('');
+    const inventoryCatFilter = ref('All');
+    const menuSearch = ref('');
+    const menuCatFilter = ref('All');
+    const profitMargin = ref(45);
+    const pricingSearch = ref('');
+    const pricingCatFilter = ref('All');
+    const expandedPricingDish = ref(null);
+    const selectedPricingDish = ref(null);
+    const showIngredientDropdown = ref(false);
+
+    // ── Inventory Modal State ────────────────────────────────────────────
+    const invModal = reactive({
+      open: false,
+      mode: 'add', // 'add' | 'edit'
+      editId: null,
+      form: { name:'', category:'', unit:'kg', stock:0, threshold:5, price:0, supplier:'' }
+    });
+    const invDeleteConfirm = reactive({ open: false, item: null });
+
+    // ── Menu / Dish Modal State ──────────────────────────────────────────
+    const menuIngModal = reactive({ open: false, dish: null });
+    const dishModal = reactive({
+      open: false,
+      mode: 'add',
+      editId: null,
+      form: { name:'', category:'', image:'🍽️', photoPreview: null, price:0, popular:false }
+    });
+    const dishDeleteConfirm = reactive({ open: false, dish: null });
+
+    // ── QR Code Modal State ──────────────────────────────────────────────
+    const qrModal = reactive({
+      open: false,
+      role: '',   // 'chef' | 'waiter' | 'tables'
+      tableCount: '',
+      tableCountInput: false,
+      generatedQRs: [],
+    });
+
+    // ── Data ─────────────────────────────────────────────────────────────
+    const stats = reactive({ ...mockData.stats });
+    const revenueChart = ref([...mockData.revenueChart]);
+    const orderStatus = ref([...mockData.orderStatus]);
+    const pendingOrders = ref(mockData.pendingOrders.map(o => ({...o, items: o.items.map(i=>({...i}))})));
+    const inventory = ref(mockData.inventory.map(i => ({...i})));
+    const menuItems = ref(mockData.menu.map(i => ({...i})));
+    const pricingIngredients = ref(mockData.pricingIngredients.map(i => ({...i})));
+    const recentActivity = ref([...mockData.recentActivity]);
+
+    // ── Nav ──────────────────────────────────────────────────────────────
+    const navItems = computed(() => [
+      { id: 'dashboard', label: 'Dashboard',  icon: 'bi bi-grid-1x2-fill' },
+      { id: 'orders',    label: 'Orders',     icon: 'bi bi-receipt',         badge: pendingOrders.value.length || null },
+      { id: 'inventory', label: 'Inventory',  icon: 'bi bi-boxes',           badge: lowStockItems.value.length || null },
+      { id: 'menu',      label: 'Menu',       icon: 'bi bi-journal-text' },
+      { id: 'pricing',   label: 'Pricing',    icon: 'bi bi-tag-fill' },
+      { id: 'analytics', label: 'Analytics',  icon: 'bi bi-bar-chart-line-fill' },
+      { id: 'staff',     label: 'Staff Control', icon: 'bi bi-people-fill' },
+      { id: 'settings',  label: 'Settings',   icon: 'bi bi-gear-fill' },
+    ]);
+
+    const mobileNavItems = [
+      { id: 'dashboard', label: 'Home',      icon: 'bi bi-grid-1x2-fill' },
+      { id: 'orders',    label: 'Orders',    icon: 'bi bi-receipt' },
+      { id: 'inventory', label: 'Stock',     icon: 'bi bi-boxes' },
+      { id: 'menu',      label: 'Menu',      icon: 'bi bi-journal-text' },
+      { id: 'analytics', label: 'Analytics', icon: 'bi bi-bar-chart-line-fill' },
+    ];
+
+    const currentPageLabel = computed(() => {
+      const map = { dashboard: 'Dashboard', orders: 'Order Approval', inventory: 'Inventory', menu: 'Menu Management', pricing: 'Pricing', analytics: 'Analytics', staff: 'Staff Control', settings: 'Settings' };
+      return map[currentPage.value] || '';
+    });
+
+    // ── Computed: KPI cards ───────────────────────────────────────────────
+    const kpiCards = computed(() => [
+      { label: "Today's Revenue",   value: `₹${stats.revenue.toLocaleString()}`,  icon: '💰', bg: '#FEF3C7', color: '#92400E', trend: stats.trend, sub: null },
+      { label: "Active Orders",     value: stats.activeOrders,                    icon: '🔥', bg: '#FDE7EB', color: '#9B1C2A', trend: null, sub: `${stats.completedOrders} completed today` },
+      { label: "Tables Occupied",   value: `${stats.tablesOccupied}/${stats.totalTables}`, icon: '🍽️', bg: '#D1F5F0', color: '#1A6B63', trend: null, sub: `${stats.totalTables - stats.tablesOccupied} tables free` },
+      { label: "Avg Order Value",   value: `₹${stats.avgOrderValue}`,             icon: '📊', bg: '#F0EBE3', color: '#6B5744', trend: null, sub: `${pendingOrders.value.length} pending approval` },
+    ]);
+
+    // ── Computed: Inventory ───────────────────────────────────────────────
+    const lowStockItems = computed(() => inventory.value.filter(i => i.stock <= i.threshold));
+    const outOfStock    = computed(() => inventory.value.filter(i => i.stock === 0));
+
+    const inventoryCategories = computed(() => {
+      const cats = ['All', ...new Set(inventory.value.map(i => i.category))];
+      return cats;
+    });
+
+    const filteredInventory = computed(() => {
+      return inventory.value.filter(i => {
+        const matchCat   = inventoryCatFilter.value === 'All' || i.category === inventoryCatFilter.value;
+        const matchSearch = i.name.toLowerCase().includes(inventorySearch.value.toLowerCase());
+        return matchCat && matchSearch;
+      });
+    });
+
+    // ── Computed: Menu ────────────────────────────────────────────────────
+    const menuCategories = computed(() => ['All', ...new Set(menuItems.value.map(i => i.category))]);
+
+    const filteredMenu = computed(() => {
+      return menuItems.value.filter(i => {
+        const matchCat    = menuCatFilter.value === 'All' || i.category === menuCatFilter.value;
+        const matchSearch = i.name.toLowerCase().includes(menuSearch.value.toLowerCase());
+        return matchCat && matchSearch;
+      });
+    });
+
+    // ── Computed: Pricing table ───────────────────────────────────────────
+    const filteredPricingMenu = computed(() => {
+      return menuItems.value.filter(i => {
+        const matchCat    = pricingCatFilter.value === 'All' || i.category === pricingCatFilter.value;
+        const matchSearch = i.name.toLowerCase().includes(pricingSearch.value.toLowerCase()) ||
+                            i.category.toLowerCase().includes(pricingSearch.value.toLowerCase());
+        return matchCat && matchSearch;
+      });
+    });
+
+    // ── Computed: Selected dish pricing ──────────────────────────────────
+    const selectedDishIngredientTotal = computed(() => {
+      if (!selectedPricingDish.value) return 0;
+      const ings = selectedPricingDish.value.ingredients || [];
+      return ings.reduce((s, i) => s + (parseFloat(i.cost) || 0), 0);
+    });
+    const pricingFinalPrice = computed(() =>
+      selectedDishIngredientTotal.value > 0
+        ? Math.ceil(selectedDishIngredientTotal.value / (1 - profitMargin.value / 100))
+        : 0
+    );
+    const pricingProfitAmount = computed(() => pricingFinalPrice.value - selectedDishIngredientTotal.value);
+    const pricingCostPercent  = computed(() =>
+      pricingFinalPrice.value > 0
+        ? Math.round((selectedDishIngredientTotal.value / pricingFinalPrice.value) * 100)
+        : 0
+    );
+
+    // ── Computed: Pricing ─────────────────────────────────────────────────
+    const totalIngredientCost = computed(() => pricingIngredients.value.reduce((sum, i) => sum + i.cost, 0));
+    const finalPrice   = computed(() => Math.ceil(totalIngredientCost.value / (1 - profitMargin.value / 100)));
+    const profitAmount = computed(() => finalPrice.value - totalIngredientCost.value);
+    const costPercent  = computed(() => Math.round((totalIngredientCost.value / finalPrice.value) * 100));
+
+    // ── Computed: Order detail ────────────────────────────────────────────
+    const orderTotalCost = computed(() =>
+      selectedOrder.value ? selectedOrder.value.items.reduce((s, i) => s + i.cost * i.qty, 0) : 0
+    );
+    const orderProfit = computed(() =>
+      selectedOrder.value ? selectedOrder.value.total - orderTotalCost.value : 0
+    );
+
+    // ── Computed: Analytics top dishes ───────────────────────────────────
+    const topDishes = computed(() => menuItems.value
+      .filter(d => d.available)
+      .map(d => ({
+        ...d,
+        orders: Math.floor(Math.random() * 80 + 20),
+        revenue: d.price * Math.floor(Math.random() * 80 + 20),
+        margin: Math.round(((d.price - d.cost) / d.price) * 100),
+        trend: (Math.random() * 20 - 5).toFixed(1),
+      }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 8)
+    );
+
+    // ── SVG Chart helpers ─────────────────────────────────────────────────
+    // Revenue line chart: maps revenue values to SVG y coords (10–160 range)
+    function svgRevY(val) {
+      const min = 0, max = 42000;
+      return 160 - ((val - min) / (max - min)) * 150;
+    }
+    const svgRevLine = computed(() =>
+      revenueChart.value.map((d, i) => `${40 + i * 61.7},${svgRevY(d.revenue)}`).join(' ')
+    );
+    const svgRevFill = computed(() => {
+      const pts = revenueChart.value.map((d, i) => `${40 + i * 61.7},${svgRevY(d.revenue)}`).join(' ');
+      const last = `${40 + (revenueChart.value.length - 1) * 61.7},160`;
+      return `40,160 ${pts} ${last}`;
+    });
+    // Orders bar chart: maps order counts to SVG y coords
+    function svgOrdY(val) {
+      const max = 150;
+      return 160 - (val / max) * 150;
+    }
+
+    // ── Settings ──────────────────────────────────────────────────────────
+    const settingsFields = ref([
+      { label: 'Restaurant Name', value: 'DineFlow Kitchen' },
+      { label: 'Address', value: '12 MG Road, Patna, Bihar' },
+      { label: 'Phone', value: '+91 98765 43210', type: 'tel' },
+      { label: 'Email', value: 'manager@dineflow.in', type: 'email' },
+      { label: 'Tax Rate (%)', value: '5', type: 'number' },
+    ]);
+    const notificationSettings = ref([
+      { label: 'New Order Alerts',      desc: 'Notify when new orders arrive',         enabled: true },
+      { label: 'Low Stock Alerts',      desc: 'Alert when stock drops below threshold', enabled: true },
+      { label: 'Daily Revenue Report',  desc: 'Email summary at 11 PM',                 enabled: false },
+    ]);
+
+    // ── Methods ───────────────────────────────────────────────────────────
+    let toastCounter = 0;
+    function showToast(message, icon = '✅') {
+      const id = ++toastCounter;
+      toasts.value.push({ id, message, icon });
+      setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, 3000);
+    }
+
+    function navigate(page) {
+      currentPage.value = page;
+      mobileSidebarOpen.value = false;
+      selectedOrder.value = null;
+    }
+
+    function toggleSidebar() {
+      sidebarCollapsed.value = !sidebarCollapsed.value;
+    }
+
+    function openMobileSidebar() {
+      mobileSidebarOpen.value = true;
+    }
+
+    function closeMobileSidebar() {
+      mobileSidebarOpen.value = false;
+    }
+
+    function selectOrder(order) {
+      selectedOrder.value = order;
+    }
+
+    function approveOrder(id) {
+      const idx = pendingOrders.value.findIndex(o => o.id === id);
+      if (idx !== -1) {
+        pendingOrders.value.splice(idx, 1);
+        stats.activeOrders = Math.max(0, stats.activeOrders - 1);
+        stats.completedOrders++;
+        if (selectedOrder.value?.id === id) selectedOrder.value = null;
+        showToast(`Order ${id} approved & sent to kitchen`, '✅');
+      }
+    }
+
+    function rejectOrder(id) {
+      const idx = pendingOrders.value.findIndex(o => o.id === id);
+      if (idx !== -1) {
+        pendingOrders.value.splice(idx, 1);
+        stats.cancelledOrders++;
+        if (selectedOrder.value?.id === id) selectedOrder.value = null;
+        showToast(`Order ${id} rejected`, '❌');
+      }
+    }
+
+    function updateStock(item) {
+      // In production: api.updateInventoryStock(item.id, item.stock)
+      showToast(`${item.name} updated to ${item.stock} ${item.unit}`, '📦');
+    }
+
+    function toggleDish(id) {
+      const dish = menuItems.value.find(d => d.id === id);
+      if (dish) {
+        dish.available = !dish.available;
+        showToast(`${dish.name} marked ${dish.available ? 'available' : 'unavailable'}`, dish.available ? '✅' : '🚫');
+      }
+    }
+
+    // ── Inventory CRUD ─────────────────────────────────────────────────────
+    function openAddInventory() {
+      invModal.mode = 'add';
+      invModal.editId = null;
+      invModal.form = { name:'', category:'', unit:'kg', stock:0, threshold:5, price:0, supplier:'' };
+      invModal.open = true;
+    }
+    function openEditInventory(item) {
+      invModal.mode = 'edit';
+      invModal.editId = item.id;
+      invModal.form = { name:item.name, category:item.category, unit:item.unit, stock:item.stock, threshold:item.threshold, price:item.price, supplier:item.supplier||'' };
+      invModal.open = true;
+    }
+    function saveInventoryItem() {
+      if (!invModal.form.name.trim() || !invModal.form.category || !invModal.form.unit) {
+        showToast('Please fill required fields', '⚠️'); return;
+      }
+      if (invModal.mode === 'add') {
+        const newId = Math.max(0, ...inventory.value.map(i=>i.id)) + 1;
+        inventory.value.push({ id:newId, ...invModal.form });
+        showToast(`${invModal.form.name} added to inventory`, '✅');
+      } else {
+        const idx = inventory.value.findIndex(i=>i.id===invModal.editId);
+        if (idx !== -1) Object.assign(inventory.value[idx], invModal.form);
+        showToast(`${invModal.form.name} updated`, '✅');
+      }
+      invModal.open = false;
+    }
+    function askDeleteInventory(item) { invDeleteConfirm.item = item; invDeleteConfirm.open = true; }
+    function confirmDeleteInventory() {
+      const idx = inventory.value.findIndex(i=>i.id===invDeleteConfirm.item.id);
+      if (idx !== -1) {
+        showToast(`${invDeleteConfirm.item.name} removed`, '🗑️');
+        inventory.value.splice(idx, 1);
+      }
+      invDeleteConfirm.open = false;
+    }
+
+    // ── Menu / Dish CRUD ───────────────────────────────────────────────────
+    function openAddDish() {
+      dishModal.mode = 'add';
+      dishModal.editId = null;
+      dishModal.form = { name:'', category:'', image:'🍽️', photoPreview: null, price:0, popular:false };
+      dishModal.open = true;
+    }
+    function openEditDish(dish) {
+      dishModal.mode = 'edit';
+      dishModal.editId = dish.id;
+      dishModal.form = { name:dish.name, category:dish.category, image:dish.image, photoPreview: dish.photoPreview||null, price:dish.price, popular:dish.popular };
+      dishModal.open = true;
+    }
+    function saveDish() {
+      if (!dishModal.form.name.trim() || !dishModal.form.category) {
+        showToast('Please fill required fields', '⚠️'); return;
+      }
+      if (dishModal.mode === 'add') {
+        const newId = Math.max(0, ...menuItems.value.map(d=>d.id)) + 1;
+        menuItems.value.push({ id:newId, ...dishModal.form, cost:0, available:true, ingredients:[] });
+        showToast(`${dishModal.form.name} added to menu`, '✅');
+      } else {
+        const dish = menuItems.value.find(d=>d.id===dishModal.editId);
+        if (dish) Object.assign(dish, dishModal.form);
+        showToast(`${dishModal.form.name} updated`, '✅');
+      }
+      dishModal.open = false;
+    }
+    function onDishPhotoChange(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { showToast('Photo must be under 5 MB', '⚠️'); return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => { dishModal.form.photoPreview = ev.target.result; };
+      reader.readAsDataURL(file);
+    }
+    function askDeleteDish(dish) { dishDeleteConfirm.dish = dish; dishDeleteConfirm.open = true; }
+    function confirmDeleteDish() {
+      const idx = menuItems.value.findIndex(d=>d.id===dishDeleteConfirm.dish.id);
+      if (idx !== -1) {
+        showToast(`${dishDeleteConfirm.dish.name} removed from menu`, '🗑️');
+        menuItems.value.splice(idx, 1);
+      }
+      dishDeleteConfirm.open = false;
+    }
+
+    // ── Dish Ingredient Editor ──────────────────────────────────────────────
+    let ingIdCounter = 100;
+    function openIngredientEditor(dish) {
+      menuIngModal.dish = dish;
+      if (!dish.ingredients) dish.ingredients = [];
+      menuIngModal.open = true;
+    }
+    function addIngredientRow(dish) {
+      if (!dish.ingredients) dish.ingredients = [];
+      dish.ingredients.push({ id: ++ingIdCounter, name:'', qty:0.1, unit:'kg', cost:0 });
+    }
+    function removeIngredient(dish, idx) {
+      dish.ingredients.splice(idx, 1);
+      recalcDishCost(dish);
+    }
+    function syncIngredientCost(ing) {
+      if (ing.name && ing.name !== '__custom__') {
+        const invItem = inventory.value.find(i=>i.name===ing.name);
+        if (invItem) { ing.unit = invItem.unit; ing.cost = parseFloat((invItem.price * ing.qty).toFixed(2)); }
+      }
+    }
+    function recalcDishCost(dish) {
+      if (!dish) return;
+      dish.cost = dishIngredientTotal(dish);
+    }
+    function dishIngredientTotal(dish) {
+      if (!dish || !dish.ingredients) return 0;
+      return dish.ingredients.reduce((s, i) => s + (parseFloat(i.cost)||0), 0);
+    }
+    function saveDishIngredients() {
+      if (menuIngModal.dish) recalcDishCost(menuIngModal.dish);
+      showToast(`Ingredients saved for ${menuIngModal.dish?.name}`, '✅');
+      menuIngModal.open = false;
+    }
+
+    // ── Pricing dish selection ─────────────────────────────────────────────
+    function selectPricingDish(dish) {
+      selectedPricingDish.value = dish;
+      showIngredientDropdown.value = false;
+    }
+    function recalcSelectedDishCost() {
+      if (selectedPricingDish.value) {
+        selectedPricingDish.value.cost = selectedDishIngredientTotal.value;
+      }
+    }
+    function applyPriceToMenu() {
+      if (!selectedPricingDish.value) { showToast('Select a dish first', '⚠️'); return; }
+      selectedPricingDish.value.price = pricingFinalPrice.value;
+      selectedPricingDish.value.cost  = selectedDishIngredientTotal.value;
+      showToast(`${selectedPricingDish.value.name} price updated to ₹${pricingFinalPrice.value}`, '✅');
+    }
+
+    // ── QR Code Generation ─────────────────────────────────────────────────
+    function openQRModal(role) {
+      qrModal.role = role;
+      qrModal.tableCount = '';
+      qrModal.tableCountInput = false;
+      qrModal.generatedQRs = [];
+      if (role === 'tables') {
+        qrModal.tableCountInput = true;
+        qrModal.open = true;
+      } else {
+        // Generate single QR immediately for chef / waiter
+        qrModal.open = true;
+        generateQRCodes();
+      }
+    }
+    function generateQRCodes() {
+      const count = qrModal.role === 'tables' ? parseInt(qrModal.tableCount) : 1;
+      if (qrModal.role === 'tables' && (!count || count < 1 || count > 50)) {
+        showToast('Please enter a number between 1 and 50', '⚠️'); return;
+      }
+      qrModal.tableCountInput = false;
+      qrModal.generatedQRs = [];
+      for (let i = 1; i <= count; i++) {
+        let label, url;
+        if (qrModal.role === 'chef') {
+          label = 'Chef Access'; url = `https://dineflow.in/access/chef?token=CHF-${Date.now()}`;
+        } else if (qrModal.role === 'waiter') {
+          label = 'Waiter Access'; url = `https://dineflow.in/access/waiter?token=WTR-${Date.now() + i}`;
+        } else {
+          label = `Table ${i}`; url = `https://dineflow.in/menu?table=${i}&t=${Date.now()}`;
+        }
+        qrModal.generatedQRs.push({ label, url, svgId: `qr-svg-${i}` });
+      }
+      nextTick(() => {
+        qrModal.generatedQRs.forEach((qr, idx) => renderQRSVG(qr.url, `qr-svg-${idx+1}`, qr.label));
+      });
+    }
+    function renderQRSVG(data, containerId, label) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      // Simple deterministic QR-like pattern from hash of the string
+      const size = 11; // modules
+      const cellSize = 16;
+      const hash = [...data].reduce((h, c) => (h * 31 + c.charCodeAt(0)) & 0xFFFFFFFF, 0);
+      let cells = [];
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          // Finder patterns (corners)
+          const inFinder = (r<3&&c<3)||(r<3&&c>size-4)||(r>size-4&&c<3);
+          // Generate "data" cells from hash
+          const bit = inFinder || ((hash ^ (r * 17 + c * 31 + r * c)) & (1 << ((r * size + c) % 30))) !== 0;
+          if (bit) cells.push({ r, c });
+        }
+      }
+      const pad = 10;
+      const dim = size * cellSize + pad * 2;
+      const rects = cells.map(({r, c}) =>
+        `<rect x="${pad + c * cellSize + 1}" y="${pad + r * cellSize + 1}" width="${cellSize-2}" height="${cellSize-2}" rx="2" fill="#1A1208"/>`
+      ).join('');
+      el.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0.5rem;">
+          <svg viewBox="0 0 ${dim} ${dim}" width="${dim}" height="${dim}" xmlns="http://www.w3.org/2000/svg" style="border-radius:8px;background:white;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,0.1)">
+            ${rects}
+            <rect x="${pad}" y="${pad}" width="${3*cellSize}" height="${3*cellSize}" rx="3" fill="none" stroke="#1A1208" stroke-width="2.5"/>
+            <rect x="${pad + size*cellSize - 3*cellSize}" y="${pad}" width="${3*cellSize}" height="${3*cellSize}" rx="3" fill="none" stroke="#1A1208" stroke-width="2.5"/>
+            <rect x="${pad}" y="${pad + size*cellSize - 3*cellSize}" width="${3*cellSize}" height="${3*cellSize}" rx="3" fill="none" stroke="#1A1208" stroke-width="2.5"/>
+          </svg>
+          <div style="font-size:0.75rem;font-weight:700;color:#1A1208;text-align:center;">${label}</div>
+        </div>`;
+    }
+    function closeQRModal() {
+      qrModal.open = false;
+      qrModal.generatedQRs = [];
+    }
+
+    // ── Clock ─────────────────────────────────────────────────────────────
+    function updateTime() {
+      const now = new Date();
+      currentTime.value = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+        + ' · ' + now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+    }
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────
+    onMounted(() => {
+      updateTime();
+      setInterval(updateTime, 30000);
+    });
+
+    return {
+      currentPage, sidebarCollapsed, mobileSidebarOpen, currentTime, toasts,
+      selectedOrder, inventorySearch, inventoryCatFilter, menuSearch, menuCatFilter, profitMargin,
+      pricingSearch, pricingCatFilter, expandedPricingDish,
+      selectedPricingDish, showIngredientDropdown,
+      stats, revenueChart, orderStatus, pendingOrders, inventory, menuItems, pricingIngredients, recentActivity,
+      navItems, mobileNavItems, currentPageLabel,
+      kpiCards, lowStockItems, outOfStock, inventoryCategories, filteredInventory,
+      menuCategories, filteredMenu, filteredPricingMenu,
+      selectedDishIngredientTotal, pricingFinalPrice, pricingProfitAmount, pricingCostPercent,
+      totalIngredientCost, finalPrice, profitAmount, costPercent,
+      orderTotalCost, orderProfit, topDishes, settingsFields, notificationSettings,
+      // SVG chart helpers
+      svgRevY, svgRevLine, svgRevFill, svgOrdY,
+      // Inventory CRUD
+      invModal, invDeleteConfirm,
+      openAddInventory, openEditInventory, saveInventoryItem, askDeleteInventory, confirmDeleteInventory,
+      // Menu / Dish CRUD
+      menuIngModal, dishModal, dishDeleteConfirm,
+      openAddDish, openEditDish, saveDish, askDeleteDish, confirmDeleteDish,
+      openIngredientEditor, addIngredientRow, removeIngredient, syncIngredientCost,
+      recalcDishCost, dishIngredientTotal, saveDishIngredients, onDishPhotoChange,
+      // QR Code
+      qrModal, openQRModal, generateQRCodes, closeQRModal,
+      // Pricing actions
+      selectPricingDish, recalcSelectedDishCost, applyPriceToMenu,
+      navigate, toggleSidebar, openMobileSidebar, closeMobileSidebar,
+      selectOrder, approveOrder, rejectOrder, updateStock, toggleDish,
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

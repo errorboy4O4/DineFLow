@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>DineFlow — Welcome</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --coffee:   #6F4E37;
+      --coffee-d: #4A3423;
+      --cream:    #F8F5F0;
+      --mint:     #3AAFA9;
+      --mint-d:   #2A8F8A;
+      --amber:    #F4A261;
+      --dark:     #1A1208;
+      --muted:    #9C8E84;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--dark);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background blobs ── */
+    .bg-blobs {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.12;
+      animation: drift 12s ease-in-out infinite alternate;
+    }
+    .blob-1 { width: 500px; height: 500px; background: var(--coffee); top: -150px; left: -150px; animation-duration: 14s; }
+    .blob-2 { width: 400px; height: 400px; background: var(--mint);   bottom: -100px; right: -100px; animation-duration: 10s; animation-delay: -4s; }
+    .blob-3 { width: 300px; height: 300px; background: var(--amber);  top: 40%; left: 40%; animation-duration: 16s; animation-delay: -7s; }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(40px, 30px) scale(1.08); }
+    }
+
+    /* ── Shell ── */
+    #app {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      padding: 2rem 1.25rem calc(2rem + env(safe-area-inset-bottom));
+    }
+
+    /* ── Header ── */
+    .hero {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    .logo-ring {
+      position: relative;
+      width: 90px; height: 90px;
+      margin: 0 auto 1.25rem;
+    }
+    .logo-ring::before,
+    .logo-ring::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: rgba(111,78,55,0.25);
+      animation: pulse-ring 2.5s ease-out infinite;
+    }
+    .logo-ring::after { animation-delay: 1.2s; }
+    @keyframes pulse-ring {
+      0%   { transform: scale(1);   opacity: 0.7; }
+      100% { transform: scale(1.7); opacity: 0; }
+    }
+    .logo-inner {
+      position: relative;
+      z-index: 1;
+      width: 90px; height: 90px;
+      background: linear-gradient(135deg, var(--coffee-d), var(--coffee));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.25rem;
+      box-shadow: 0 8px 32px rgba(111,78,55,0.4);
+    }
+
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.25rem;
+      font-weight: 700;
+      color: var(--coffee-d);
+      letter-spacing: -0.02em;
+      margin-bottom: 0.4rem;
+    }
+    .hero p {
+      font-size: 0.875rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+      padding-left: 0.25rem;
+    }
+
+    /* ── Role cards ── */
+    .role-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.125rem;
+      border-radius: 1rem;
+      border: 1.5px solid rgba(111,78,55,0.1);
+      background: white;
+      backdrop-filter: none;
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--dark);
+      box-shadow: 0 2px 10px rgba(111,78,55,0.07);
+      margin-bottom: 0.75rem;
+      transition: all 0.22s cubic-bezier(0.22,1,0.36,1);
+      position: relative;
+      overflow: hidden;
+    }
+    .role-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.22s;
+    }
+    .role-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(111,78,55,0.25);
+      box-shadow: 0 8px 24px rgba(111,78,55,0.12);
+    }
+    .role-card:hover::before { opacity: 1; }
+    .role-card:active { transform: scale(0.98); }
+
+    /* Per-role accent colours */
+    .card-customer  { border-left: 3px solid var(--amber); }
+    .card-customer::before  { background: linear-gradient(135deg, rgba(244,162,97,0.06), transparent); }
+    .card-customer:hover  { box-shadow: 0 12px 40px rgba(244,162,97,0.15); }
+
+    .card-manager   { border-left: 3px solid var(--coffee); }
+    .card-manager::before   { background: linear-gradient(135deg, rgba(111,78,55,0.06), transparent); }
+    .card-manager:hover   { box-shadow: 0 12px 40px rgba(111,78,55,0.2); }
+
+    .card-chef      { border-left: 3px solid #E63946; }
+    .card-chef::before      { background: linear-gradient(135deg, rgba(230,57,70,0.05), transparent); }
+    .card-chef:hover      { box-shadow: 0 12px 40px rgba(230,57,70,0.15); }
+
+    .card-waiter    { border-left: 3px solid var(--mint); }
+    .card-waiter::before    { background: linear-gradient(135deg, rgba(58,175,169,0.05), transparent); }
+    .card-waiter:hover    { box-shadow: 0 12px 40px rgba(58,175,169,0.15); }
+
+    /* Icon badge */
+    .role-icon {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    .icon-customer  { background: rgba(244,162,97,0.18); }
+    .icon-manager   { background: rgba(111,78,55,0.1);  }
+    .icon-chef      { background: rgba(230,57,70,0.1);  }
+    .icon-waiter    { background: rgba(58,175,169,0.15); }
+
+    .role-info { flex: 1; }
+    .role-title {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--dark);
+      margin-bottom: 0.2rem;
+    }
+    .role-desc {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    .role-arrow {
+      color: rgba(111,78,55,0.35);
+      font-size: 1.125rem;
+      transition: transform 0.2s, color 0.2s;
+      flex-shrink: 0;
+    }
+    .role-card:hover .role-arrow {
+      transform: translateX(4px);
+      color: var(--coffee);
+    }
+
+    /* ── Divider ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 1.5rem 0 1.25rem;
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(111,78,55,0.12);
+    }
+
+    /* ── Status dots legend ── */
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .legend-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-weight: 500;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── "NEW" pip ── */
+    .pip {
+      font-size: 0.55rem;
+      font-weight: 800;
+      background: var(--mint);
+      color: white;
+      padding: 0.1rem 0.375rem;
+      border-radius: 2rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-left: 0.375rem;
+      vertical-align: middle;
+    }
+
+    /* Entrance animation */
+    .fade-in { animation: fadeIn 0.5s ease both; }
+    .fade-in:nth-child(1) { animation-delay: 0.1s; }
+    .fade-in:nth-child(2) { animation-delay: 0.18s; }
+    .fade-in:nth-child(3) { animation-delay: 0.26s; }
+    .fade-in:nth-child(4) { animation-delay: 0.34s; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    @media (min-width: 500px) {
+      body { background: var(--cream-dark, #EDE8E0); }
+      #app { padding: 3rem 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background blobs -->
+  <div class="bg-blobs">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <div id="app">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="logo-ring">
+        <div class="logo-inner">☕</div>
+      </div>
+      <h1>DineFlow</h1>
+      <p>Smart Restaurant System</p>
+    </div>
+
+    <!-- Guest / Customer -->
+    <div class="section-label">For Guests</div>
+
+    <a href="customer.html" class="role-card card-customer fade-in">
+      <div class="role-icon icon-customer">🍽️</div>
+      <div class="role-info">
+        <div class="role-title">Customer<span class="pip">New</span></div>
+        <div class="role-desc">Browse the menu, place orders & track your food live</div>
+      </div>
+      <i class="bi bi-chevron-right role-arrow"></i>
+    </a>
+
+    <div class="divider">Staff Access</div>
+
+    <!-- Manager -->
+    <a href="manager-dashboard.html" class="role-card card-manager fade-in">
+      <div class="role-icon icon-manager">📊</div>
+      <div class="role-info">
+        <div class="role-title">Manager</div>
+        <div class="role-desc">Dashboard · Orders · Inventory · Analytics · Staff control</div>
+      </div>
+      <i class="bi bi-chevron-right role-arrow"></i>
+    </a>
+
+    <!-- Chef -->
+    <a href="chef-dashboard-mobile.html" class="role-card card-chef fade-in">
+      <div class="role-icon icon-chef">👨‍🍳</div>
+      <div class="role-info">
+        <div class="role-title">Chef</div>
+        <div class="role-desc">View order queue · Mark dishes done · Custom recipes</div>
+      </div>
+      <i class="bi bi-chevron-right role-arrow"></i>
+    </a>
+
+    <!-- Waiter -->
+    <a href="waiter.html" class="role-card card-waiter fade-in">
+      <div class="role-icon icon-waiter">🧑‍🍽️</div>
+      <div class="role-info">
+        <div class="role-title">Waiter</div>
+        <div class="role-desc">Manage tables · Deliver orders · Generate bills</div>
+      </div>
+      <i class="bi bi-chevron-right role-arrow"></i>
+    </a>
+
+
+  </div>
+
+</body>
+</html>

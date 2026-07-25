@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>DineFlow — Waiter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: {
+          coffee: { DEFAULT:'#6F4E37', light:'#8B6347', dark:'#4A3423' },
+          cream:  { DEFAULT:'#F8F5F0', dark:'#EDE8E0' },
+          mint:   { DEFAULT:'#3AAFA9', light:'#4EC9C3', dark:'#2A8F8A' },
+        },
+        fontFamily: { display:['"Playfair Display"','serif'], sans:['"DM Sans"','sans-serif'] }
+      }}
+    }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #F8F5F0;
+      color: #1A1208;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    #app {
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: #F8F5F0;
+      position: relative;
+      box-shadow: 0 0 60px rgba(111,78,55,0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .w-header {
+      background: #1A1208;
+      padding: 1rem 1.25rem 0.875rem;
+      display: flex; align-items: center; gap: 0.875rem;
+      flex-shrink: 0;
+    }
+    .w-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, #6F4E37, #3AAFA9);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; flex-shrink: 0; font-weight: 700;
+      color: white;
+    }
+    .w-name { font-size: 0.9375rem; font-weight: 700; color: #F8F5F0; }
+    .w-role { font-size: 0.7rem; color: rgba(248,245,240,0.5); font-weight: 600; }
+    .w-shift {
+      margin-left: auto;
+      font-size: 0.75rem; font-weight: 700; color: #F4A261;
+      background: rgba(244,162,97,0.12); border: 1px solid rgba(244,162,97,0.2);
+      padding: 0.25rem 0.625rem; border-radius: 20px;
+    }
+    .w-notif {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(248,245,240,0.7); font-size: 1.1rem; cursor: pointer;
+      position: relative;
+    }
+    .w-notif-dot {
+      position: absolute; top: 6px; right: 6px;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #E63946; border: 1.5px solid #1A1208;
+    }
+
+    /* ── Alert banner ── */
+    .alert-banner {
+      background: linear-gradient(90deg, #4A3423, #6F4E37);
+      padding: 0.625rem 1.25rem;
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.8125rem; font-weight: 700; color: white;
+      cursor: pointer;
+    }
+
+    /* ── Tabs ── */
+    .w-tabs {
+      background: white;
+      border-bottom: 1px solid rgba(111,78,55,0.1);
+      display: flex; flex-shrink: 0;
+    }
+    .w-tab {
+      flex: 1; padding: 0.75rem 0.25rem;
+      text-align: center; font-size: 0.7rem; font-weight: 700;
+      color: #9C8E84; cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s; position: relative;
+    }
+    .w-tab i { font-size: 1.1rem; display: block; margin-bottom: 0.2rem; }
+    .w-tab.active { color: #6F4E37; border-bottom-color: #6F4E37; }
+    .w-tab-badge {
+      position: absolute; top: 8px; right: calc(50% - 18px);
+      background: #E63946; color: white;
+      font-size: 0.55rem; font-weight: 700;
+      padding: 0.1rem 0.3rem; border-radius: 2rem;
+      border: 1.5px solid white; min-width: 16px; text-align: center;
+    }
+
+    /* ── Content area ── */
+    .w-content { flex: 1; overflow-y: auto; padding-bottom: 1rem; }
+    .w-section { padding: 1rem 1rem 0; }
+    .w-section-title {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: #9C8E84; margin-bottom: 0.75rem;
+    }
+
+    /* ── Panel / card ── */
+    .panel {
+      background: white;
+      border-radius: 1rem;
+      border: 1px solid rgba(111,78,55,0.1);
+      box-shadow: 0 2px 12px rgba(111,78,55,0.06);
+      overflow: hidden;
+    }
+
+    /* ── Table grid ── */
+    .table-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;
+      padding: 1rem;
+    }
+    .table-cell {
+      aspect-ratio: 1;
+      border-radius: 12px; border: 1.5px solid rgba(111,78,55,0.1);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.15s; position: relative;
+      font-size: 0.7rem; font-weight: 700; gap: 0.25rem;
+    }
+    .table-cell:active { transform: scale(0.95); }
+    .table-cell .t-num { font-size: 1rem; font-weight: 800; line-height: 1; }
+    .table-cell.free     { background: white; color: #9C8E84; }
+    .table-cell.free:hover { border-color: #3AAFA9; color: #3AAFA9; }
+    .table-cell.occupied { background: rgba(111,78,55,0.07); border-color: rgba(111,78,55,0.25); color: #6F4E37; }
+    .table-cell.occupied:hover { background: rgba(111,78,55,0.13); }
+    .table-cell.ready    { background: rgba(42,157,143,0.1); border-color: rgba(42,157,143,0.4); color: #2A9D8F; }
+    .table-cell.ready::after {
+      content: ''; position: absolute; top: 5px; right: 5px;
+      width: 8px; height: 8px; background: #2A9D8F; border-radius: 50%;
+      animation: ping 1s infinite;
+    }
+    .table-cell.waiting  { background: rgba(230,57,70,0.07); border-color: rgba(230,57,70,0.3); color: #E63946; }
+    .table-cell.waiting::after {
+      content: ''; position: absolute; top: 5px; right: 5px;
+      width: 8px; height: 8px; background: #E63946; border-radius: 50%;
+      animation: ping 1s infinite;
+    }
+    @keyframes ping {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:0.6; transform:scale(1.3); }
+    }
+    .table-status-text { font-size: 0.6rem; color: inherit; opacity: 0.7; }
+
+    /* ── Order row (single-row list format) ── */
+    .order-row {
+      display: flex; align-items: center; gap: 0.625rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(111,78,55,0.07);
+      background: white;
+    }
+    .order-row:last-child { border-bottom: none; }
+    .order-row-table {
+      width: 36px; height: 36px; border-radius: 9px;
+      background: rgba(111,78,55,0.08);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.875rem; color: #6F4E37; flex-shrink: 0;
+    }
+    .order-row-dish { flex: 1; font-weight: 600; font-size: 0.875rem; color: #1A1208; }
+    .order-row-qty {
+      font-size: 0.75rem; font-weight: 800; color: #6F4E37;
+      background: rgba(111,78,55,0.08); padding: 0.1rem 0.375rem;
+      border-radius: 4px; min-width: 24px; text-align: center; flex-shrink: 0;
+    }
+    .btn-deliver {
+      padding: 0.35rem 0.75rem; border-radius: 8px; border: none;
+      background: #6F4E37; color: white;
+      font-weight: 700; font-size: 0.75rem; cursor: pointer;
+      transition: all 0.15s; font-family: 'DM Sans', sans-serif;
+      flex-shrink: 0;
+    }
+    .btn-deliver:hover { background: #8B6347; }
+    .btn-deliver.delivered { background: #2A9D8F; }
+
+    /* ── Bill page ── */
+    .bill-header {
+      background: #1A1208;
+      padding: 1rem 1.25rem;
+      display: flex; align-items: center; gap: 0.875rem;
+      flex-shrink: 0;
+    }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      background: #6F4E37; color: white;
+      border: none; border-radius: 0.625rem;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.875rem; font-weight: 700;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: background 0.2s;
+      display: inline-flex; align-items: center; gap: 0.375rem;
+    }
+    .btn-primary:hover { background: #8B6347; }
+    .btn-ghost {
+      background: transparent; color: #6F4E37;
+      border: 1.5px solid #6F4E37; border-radius: 0.625rem;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.875rem; font-weight: 700;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+      display: inline-flex; align-items: center; gap: 0.375rem;
+    }
+    .btn-ghost:hover { background: #6F4E37; color: white; }
+
+    /* ── Summary cards ── */
+    .summary-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;
+      padding: 0 1rem 0.75rem;
+    }
+    .summary-card {
+      background: white; border-radius: 12px;
+      border: 1px solid rgba(111,78,55,0.1); padding: 0.875rem 1rem;
+      box-shadow: 0 2px 8px rgba(111,78,55,0.05);
+    }
+    .summary-val { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+    .summary-label { font-size: 0.7rem; color: #9C8E84; font-weight: 600; margin-top: 0.25rem; }
+
+    /* ── Toast ── */
+    .toast-wrap {
+      position: fixed; bottom: 1.5rem; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; gap: 0.5rem; z-index: 9000;
+      width: calc(100% - 2rem); max-width: 380px;
+    }
+    .toast {
+      background: #1A1208; color: #F8F5F0;
+      padding: 0.75rem 1rem; border-radius: 12px;
+      font-size: 0.875rem; font-weight: 600;
+      display: flex; align-items: center; gap: 0.5rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+
+    /* ── Modal overlay ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(26,18,8,0.6); backdrop-filter: blur(4px);
+      z-index: 200; display: flex; align-items: flex-end; justify-content: center;
+    }
+    .modal-sheet {
+      background: white; border-radius: 1.25rem 1.25rem 0 0;
+      width: 100%; max-width: 430px; max-height: 85vh;
+      overflow-y: auto; padding-bottom: env(safe-area-inset-bottom);
+    }
+    .modal-handle {
+      width: 36px; height: 4px; background: rgba(111,78,55,0.15);
+      border-radius: 2px; margin: 0.875rem auto 1rem;
+    }
+
+    /* ── QR modal (centered) ── */
+    .qr-modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(26,18,8,0.7); backdrop-filter: blur(6px);
+      z-index: 300; display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+    }
+    .qr-modal-box {
+      background: white; border-radius: 1.5rem;
+      width: 100%; max-width: 340px;
+      padding: 2rem 1.75rem; text-align: center;
+      animation: scaleIn 0.25s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    @keyframes scaleIn {
+      from { transform: scale(0.9); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── Slide animation ── */
+    .slide-up { animation: slideUp 0.3s ease both; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #D4C8BE; border-radius: 2px; }
+
+    /* ── Desktop ── */
+    @media (min-width: 480px) {
+      body { background: #EDE8E0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+      #app { border-radius: 1.5rem; overflow: hidden; min-height: min(860px, 95vh); }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════════ BILL PAGE ═══════════════ -->
+  <template v-if="currentPage === 'bill' && billTable">
+
+    <!-- Bill header -->
+    <div class="bill-header">
+      <button @click="currentPage='main'; billTable=null"
+              style="width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(248,245,240,0.8);flex-shrink:0;">
+        <i class="bi bi-arrow-left" style="font-size:0.9rem;"></i>
+      </button>
+      <div style="flex:1;">
+        <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:#F8F5F0;">Bill — Table {{ billTable.num }}</div>
+        <div style="font-size:0.7rem;color:rgba(248,245,240,0.5);margin-top:1px;">{{ billTable.guests }} guests · since {{ billTable.since }}</div>
+      </div>
+      <span style="font-size:0.75rem;font-weight:700;color:#F4A261;background:rgba(244,162,97,0.12);border:1px solid rgba(244,162,97,0.2);padding:0.25rem 0.625rem;border-radius:20px;">Table {{ billTable.num }}</span>
+    </div>
+
+    <!-- Bill content -->
+    <div class="w-content" style="background:#F8F5F0;">
+      <div style="padding:1rem;">
+
+        <!-- Restaurant info -->
+        <div style="background:white;border-radius:1rem;border:1px solid rgba(111,78,55,0.1);padding:1.25rem;margin-bottom:1rem;text-align:center;box-shadow:0 2px 12px rgba(111,78,55,0.06);">
+          <div style="font-family:'Playfair Display',serif;font-size:1.375rem;font-weight:700;color:#1A1208;margin-bottom:0.25rem;">☕ DineFlow Kitchen</div>
+          <div style="font-size:0.75rem;color:#9C8E84;">12 MG Road, Patna · GSTIN: 10ABCDE1234F1Z5</div>
+          <div style="border-top:1px dashed rgba(111,78,55,0.15);margin:0.875rem 0;"></div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8125rem;">
+            <span style="color:#9C8E84;">Table</span><strong style="color:#1A1208;">{{ billTable.num }}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8125rem;margin-top:0.375rem;">
+            <span style="color:#9C8E84;">Guests</span><strong style="color:#1A1208;">{{ billTable.guests }}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8125rem;margin-top:0.375rem;">
+            <span style="color:#9C8E84;">Time</span><strong style="color:#1A1208;">{{ billTable.since }}</strong>
+          </div>
+        </div>
+
+        <!-- Order items -->
+        <div style="background:white;border-radius:1rem;border:1px solid rgba(111,78,55,0.1);overflow:hidden;margin-bottom:1rem;box-shadow:0 2px 12px rgba(111,78,55,0.06);">
+          <div style="padding:0.875rem 1rem;border-bottom:1px solid rgba(111,78,55,0.08);background:#F8F5F0;">
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#9C8E84;">Order Items</div>
+          </div>
+          <!-- Table header -->
+          <div style="display:grid;grid-template-columns:1fr auto auto;gap:0.5rem;padding:0.5rem 1rem;background:#FAFAF7;border-bottom:1px solid rgba(111,78,55,0.06);">
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#8B6347;">Item</div>
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#8B6347;text-align:center;min-width:32px;">Qty</div>
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#8B6347;text-align:right;min-width:60px;">Amount</div>
+          </div>
+          <div v-for="item in billItems" :key="item.cartId"
+               style="display:grid;grid-template-columns:1fr auto auto;gap:0.5rem;align-items:center;padding:0.75rem 1rem;border-bottom:1px solid rgba(111,78,55,0.06);">
+            <div style="font-weight:600;font-size:0.875rem;color:#1A1208;">{{ item.name }}</div>
+            <div style="text-align:center;font-size:0.8rem;font-weight:700;color:#6F4E37;background:rgba(111,78,55,0.07);border-radius:4px;padding:0.1rem 0.375rem;min-width:32px;">{{ item.qty }}</div>
+            <div style="text-align:right;font-weight:700;font-size:0.875rem;color:#1A1208;">₹{{ item.price * item.qty }}</div>
+          </div>
+          <div v-if="billItems.length === 0" style="padding:1.5rem;text-align:center;color:#9C8E84;font-size:0.875rem;">No items found for this table</div>
+        </div>
+
+        <!-- Bill totals -->
+        <div style="background:white;border-radius:1rem;border:1px solid rgba(111,78,55,0.1);padding:1rem;margin-bottom:1.25rem;box-shadow:0 2px 12px rgba(111,78,55,0.06);">
+          <div style="display:flex;justify-content:space-between;font-size:0.875rem;color:#6B5744;margin-bottom:0.5rem;">
+            <span>Subtotal</span><span>₹{{ billTable.spend }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.875rem;color:#6B5744;margin-bottom:0.5rem;">
+            <span>GST (5%)</span><span>₹{{ Math.round(billTable.spend * 0.05) }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.875rem;color:#6B5744;margin-bottom:0.75rem;">
+            <span>Service Charge</span><span>₹0</span>
+          </div>
+          <div style="border-top:2px solid rgba(111,78,55,0.12);padding-top:0.75rem;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:700;font-size:1rem;color:#1A1208;">Total</span>
+            <span style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:#6F4E37;">₹{{ billTable.spend + Math.round(billTable.spend * 0.05) }}</span>
+          </div>
+        </div>
+
+        <!-- Pay button -->
+        <button @click="showQrPayment=true"
+                style="width:100%;padding:0.875rem;border-radius:0.875rem;background:#6F4E37;color:white;font-weight:700;font-size:1rem;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:background 0.2s;box-shadow:0 4px 16px rgba(111,78,55,0.3);"
+                onmouseover="this.style.background='#8B6347'" onmouseout="this.style.background='#6F4E37'">
+          <i class="bi bi-qr-code" style="font-size:1.1rem;"></i>
+          Pay · ₹{{ billTable.spend + Math.round(billTable.spend * 0.05) }}
+        </button>
+
+        <div style="margin-top:0.75rem;text-align:center;font-size:0.75rem;color:#9C8E84;">
+          Close popup to collect cash payment
+        </div>
+      </div>
+    </div>
+
+    <!-- QR Payment Modal -->
+    <div v-if="showQrPayment" class="qr-modal-overlay" @click.self="showQrPayment=false">
+      <div class="qr-modal-box">
+        <!-- Close button -->
+        <button @click="showQrPayment=false"
+                style="position:absolute;top:1rem;right:1rem;width:30px;height:30px;border-radius:50%;background:#F0EBE3;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;color:#6F4E37;">✕</button>
+
+        <div style="font-family:'Playfair Display',serif;font-size:1.125rem;font-weight:700;color:#1A1208;margin-bottom:0.25rem;">Scan to Pay</div>
+        <div style="font-size:0.8rem;color:#9C8E84;margin-bottom:1.25rem;">Table {{ billTable.num }} · ₹{{ billTable.spend + Math.round(billTable.spend * 0.05) }}</div>
+
+        <!-- QR Code SVG -->
+        <div style="background:#F8F5F0;border-radius:1rem;padding:1.25rem;display:inline-block;margin-bottom:1.25rem;border:2px solid #EDE8E0;">
+          <svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+            <rect x="8"  y="8"  width="44" height="44" rx="4" fill="#1A1208"/>
+            <rect x="14" y="14" width="32" height="32" rx="2" fill="white"/>
+            <rect x="20" y="20" width="20" height="20" rx="2" fill="#1A1208"/>
+            <rect x="108" y="8"  width="44" height="44" rx="4" fill="#1A1208"/>
+            <rect x="114" y="14" width="32" height="32" rx="2" fill="white"/>
+            <rect x="120" y="20" width="20" height="20" rx="2" fill="#1A1208"/>
+            <rect x="8"  y="108" width="44" height="44" rx="4" fill="#1A1208"/>
+            <rect x="14" y="114" width="32" height="32" rx="2" fill="white"/>
+            <rect x="20" y="120" width="20" height="20" rx="2" fill="#1A1208"/>
+            <rect x="60" y="8"  width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="72" y="8"  width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="84" y="8"  width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="60" y="20" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="84" y="20" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="72" y="32" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="60" y="44" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="8"  y="60" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="20" y="60" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="44" y="60" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="60" y="60" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="72" y="60" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="96" y="60" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="108" y="60" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="132" y="60" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="144" y="60" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="8"  y="72" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="32" y="72" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="60" y="72" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="84" y="72" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="108" y="72" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="120" y="72" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="144" y="72" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="8"  y="84" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="20" y="84" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="44" y="84" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="72" y="84" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="96" y="84" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="132" y="84" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="60" y="96" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="84" y="96" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="108" y="96" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="120" y="96" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="144" y="96" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="60" y="108" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="84" y="108" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="108" y="108" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="60" y="120" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="72" y="120" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="96" y="120" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="120" y="120" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="132" y="120" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="144" y="120" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="60" y="132" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="84" y="132" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="108" y="132" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="144" y="132" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="60" y="144" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="72" y="144" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="96" y="144" width="8" height="8" rx="1" fill="#1A1208"/>
+            <rect x="120" y="144" width="8" height="8" rx="1" fill="#1A1208"/>
+          </svg>
+        </div>
+
+        <div style="background:#F0EBE3;border-radius:0.625rem;padding:0.5rem 0.875rem;margin-bottom:1.25rem;font-size:0.8rem;color:#6F4E37;font-weight:600;">
+          <i class="bi bi-upc-scan"></i> dineflow.in/pay/table{{ billTable ? billTable.num : '' }}
+        </div>
+
+        <button @click="showQrPayment=false; markPaid()"
+                style="width:100%;padding:0.75rem;border-radius:0.875rem;background:#2A9D8F;color:white;font-weight:700;font-size:0.9375rem;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:0.5rem;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
+          <i class="bi bi-check-circle-fill"></i> Confirm Payment Received
+        </button>
+        <button @click="showQrPayment=false"
+                style="width:100%;padding:0.625rem;border-radius:0.875rem;background:#F0EBE3;color:#6B5744;font-weight:600;font-size:0.875rem;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;">
+          Close (Cash Payment)
+        </button>
+      </div>
+    </div>
+
+  </template>
+
+  <!-- ═══════════════ MAIN APP ═══════════════ -->
+  <template v-else>
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="w-header">
+    <div class="w-avatar">{{ waiterName.charAt(0) }}</div>
+    <div>
+      <div class="w-name">{{ waiterName }}</div>
+      <div class="w-role">Waiter · Floor {{ floor }}</div>
+    </div>
+    <div class="w-shift">⏰ {{ shiftTime }}</div>
+    <div class="w-notif">
+      <i class="bi bi-bell-fill"></i>
+      <div class="w-notif-dot" v-if="readyPickups.length"></div>
+    </div>
+  </header>
+
+  <!-- ═══ ALERT BANNER ═══ -->
+  <div class="alert-banner" v-if="readyPickups.length" @click="goTab('orders')">
+    <i class="bi bi-bell-fill" style="animation:shake 0.5s infinite;"></i>
+    {{ readyPickups.length }} order{{ readyPickups.length > 1 ? 's' : '' }} ready for pickup at kitchen!
+    <i class="bi bi-arrow-right-short" style="margin-left:auto;font-size:1.1rem;"></i>
+  </div>
+  <style>@keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-10deg)}75%{transform:rotate(10deg)}}</style>
+
+  <!-- ═══ TABS ═══ -->
+  <div class="w-tabs">
+    <div class="w-tab" :class="{active: tab==='tables'}" @click="goTab('tables')">
+      <i class="bi bi-grid-3x3"></i>Tables
+    </div>
+    <div class="w-tab" :class="{active: tab==='orders'}" @click="goTab('orders')">
+      <i class="bi bi-receipt"></i>Orders
+      <span class="w-tab-badge" v-if="readyPickups.length">{{ readyPickups.length }}</span>
+    </div>
+  </div>
+
+  <!-- ═══ CONTENT ═══ -->
+  <div class="w-content">
+
+    <!-- ── TABLES ── -->
+    <div v-if="tab==='tables'" class="slide-up">
+      <!-- Legend -->
+      <div style="display:flex;gap:1rem;padding:0.875rem 1rem 0;flex-wrap:wrap;">
+        <div v-for="l in legend" :key="l.label" style="display:flex;align-items:center;gap:0.375rem;font-size:0.7rem;font-weight:600;color:#9C8E84;">
+          <span :style="`width:8px;height:8px;border-radius:50%;background:${l.color}`"></span>
+          {{ l.label }}
+        </div>
+      </div>
+      <div class="table-grid">
+        <div v-for="t in tables" :key="t.num"
+             class="table-cell" :class="t.status"
+             @click="handleTableClick(t)">
+          <span class="t-num">{{ t.num }}</span>
+          <span class="table-status-text">{{ tableStatusLabel(t) }}</span>
+        </div>
+      </div>
+
+      <!-- Quick stats -->
+      <div class="summary-row" style="padding-top:0;">
+        <div class="summary-card">
+          <div class="summary-val" style="color:#6F4E37;">{{ occupiedCount }}</div>
+          <div class="summary-label">Tables Occupied</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-val" style="color:#2A9D8F;">{{ freeCount }}</div>
+          <div class="summary-label">Tables Free</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ORDERS (single-row format) ── -->
+    <div v-else-if="tab==='orders'" class="slide-up">
+
+      <!-- Ready for pickup -->
+      <div class="w-section">
+        <div class="w-section-title">🔔 Ready for Pickup ({{ readyPickups.length }})</div>
+      </div>
+      <div v-if="readyPickups.length === 0" style="text-align:center;padding:1.25rem 1rem;color:#9C8E84;font-size:0.875rem;">No orders ready yet</div>
+      <div v-if="readyPickups.length > 0" style="margin:0 1rem 1rem;border-radius:1rem;overflow:hidden;border:1px solid rgba(111,78,55,0.1);box-shadow:0 2px 12px rgba(111,78,55,0.06);">
+        <!-- Column header -->
+        <div style="display:grid;grid-template-columns:44px 1fr 44px 90px;gap:0.5rem;align-items:center;padding:0.5rem 1rem;background:#F0EBE3;border-bottom:1px solid rgba(111,78,55,0.1);">
+          <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#8B6347;">Table</div>
+          <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#8B6347;">Dish</div>
+          <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#8B6347;text-align:center;">Qty</div>
+          <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#8B6347;text-align:center;">Action</div>
+        </div>
+        <div v-for="order in readyPickups" :key="order.id">
+          <div v-for="item in order.items" :key="item.cartId"
+               style="display:grid;grid-template-columns:44px 1fr 44px 90px;gap:0.5rem;align-items:center;padding:0.65rem 1rem;border-bottom:1px solid rgba(111,78,55,0.06);background:white;transition:background 0.15s;">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(42,157,143,0.1);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.8125rem;color:#2A9D8F;border:1px solid rgba(42,157,143,0.2);">{{ order.table }}</div>
+            <div>
+              <div style="font-weight:600;font-size:0.875rem;color:#1A1208;">{{ item.name }}</div>
+              <div v-if="item.instructions" style="font-size:0.7rem;color:#F4A261;margin-top:1px;">⚠️ {{ item.instructions }}</div>
+            </div>
+            <div style="text-align:center;font-size:0.8rem;font-weight:800;color:#6F4E37;background:rgba(111,78,55,0.07);border-radius:4px;padding:0.1rem 0;min-width:32px;">{{ item.qty }}</div>
+            <button class="btn-deliver" @click="serveItem(item, order)">
+              Deliver
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Served today -->
+      <div class="w-section" style="margin-top:0.25rem;">
+        <div class="w-section-title">✅ Served Today ({{ servedOrders.length }})</div>
+      </div>
+      <div v-if="servedOrders.length > 0" style="margin:0 1rem 1rem;border-radius:1rem;overflow:hidden;border:1px solid rgba(111,78,55,0.1);box-shadow:0 2px 12px rgba(111,78,55,0.06);opacity:0.75;">
+        <div v-for="o in servedOrders" :key="o.id"
+             style="display:flex;align-items:center;gap:0.75rem;padding:0.625rem 1rem;border-bottom:1px solid rgba(111,78,55,0.06);background:white;">
+          <div style="width:32px;height:32px;border-radius:8px;background:#D1F5F0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.8125rem;color:#1A6B63;">{{ o.table }}</div>
+          <div style="flex:1;"><div style="font-size:0.8125rem;font-weight:600;color:#1A1208;">{{ o.dish || o.id }}</div><div style="font-size:0.7rem;color:#9C8E84;">{{ o.id }}</div></div>
+          <span style="font-size:0.7rem;font-weight:700;color:#2A9D8F;background:rgba(42,157,143,0.1);padding:0.2rem 0.5rem;border-radius:5px;">Served</span>
+          <span style="font-size:0.7rem;color:#9C8E84;">{{ o.time }}</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ TABLE DETAIL MODAL ═══ -->
+  <div class="modal-overlay" v-if="selectedTable" @click.self="selectedTable=null">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div style="font-size:1.125rem;font-weight:800;font-family:'Playfair Display',serif;padding:0 1.25rem 1rem;border-bottom:1px solid rgba(111,78,55,0.1);">
+        Table {{ selectedTable.num }}
+        <span style="font-size:0.8rem;font-weight:600;color:#9C8E84;margin-left:0.5rem;">· {{ selectedTable.guests || 0 }} guests · {{ selectedTable.since || 'Just seated' }}</span>
+      </div>
+      <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:0.75rem;">
+        <button @click="markSeated(); selectedTable=null"
+                style="padding:0.75rem;border-radius:12px;border:none;background:#6F4E37;color:white;font-weight:700;font-size:0.9rem;cursor:pointer;font-family:'DM Sans',sans-serif;">
+          👥 Seat Guests
+        </button>
+        <button @click="clearTable(); selectedTable=null"
+                style="padding:0.75rem;border-radius:12px;border:1px solid rgba(230,57,70,0.2);background:rgba(230,57,70,0.05);color:#E63946;font-weight:700;font-size:0.9rem;cursor:pointer;font-family:'DM Sans',sans-serif;">
+          🧹 Clear Table
+        </button>
+        <button @click="selectedTable=null"
+                style="padding:0.625rem;border-radius:12px;border:1px solid rgba(111,78,55,0.15);background:transparent;color:#9C8E84;font-size:0.875rem;cursor:pointer;font-family:'DM Sans',sans-serif;">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  </template><!-- end main -->
+
+  <!-- ═══ TOASTS ═══ -->
+  <div class="toast-wrap">
+    <div v-for="t in toasts" :key="t.id" class="toast">
+      <span>{{ t.icon }}</span> {{ t.message }}
+    </div>
+  </div>
+
+</div>
+
+<script>
+const { createApp, ref, reactive, computed, onMounted } = Vue;
+
+const TABLES_DATA = [
+  { num:1,  status:'occupied', guests:2, since:'6:30 PM', spend:1060 },
+  { num:2,  status:'free',     guests:0, since:'',        spend:0 },
+  { num:3,  status:'occupied', guests:4, since:'7:05 PM', spend:2040 },
+  { num:4,  status:'free',     guests:0, since:'',        spend:0 },
+  { num:5,  status:'occupied', guests:3, since:'7:15 PM', spend:1160 },
+  { num:6,  status:'free',     guests:0, since:'',        spend:0 },
+  { num:7,  status:'ready',    guests:2, since:'6:55 PM', spend:1680 },
+  { num:8,  status:'free',     guests:0, since:'',        spend:0 },
+  { num:9,  status:'occupied', guests:4, since:'7:20 PM', spend:1580 },
+  { num:10, status:'free',     guests:0, since:'',        spend:0 },
+  { num:11, status:'waiting',  guests:3, since:'7:35 PM', spend:920 },
+  { num:12, status:'occupied', guests:2, since:'7:00 PM', spend:2040 },
+];
+
+const ORDERS_DATA = [
+  { id:'ORD-1046', table:9,  status:'ready',   time:'14 min ago', items:[
+    { cartId:12, name:'Fish Curry',     qty:2, price:640, served:false, instructions:'' },
+    { cartId:13, name:'Steamed Rice',   qty:2, price:100, served:false, instructions:'' },
+    { cartId:14, name:'Nimbu Pani',     qty:3, price:60,  served:false, instructions:'' },
+  ]},
+  { id:'ORD-1047', table:7,  status:'ready',   time:'2 min ago', items:[
+    { cartId:15, name:'Butter Chicken', qty:1, price:580, served:false, instructions:'Less spice' },
+    { cartId:16, name:'Garlic Naan',    qty:2, price:80,  served:false, instructions:'' },
+  ]},
+  { id:'ORD-1042', table:7,  status:'pending', time:'10 min ago', items:[
+    { cartId:1,  name:'Butter Chicken', qty:2, price:580, served:false, instructions:'' },
+    { cartId:2,  name:'Garlic Naan',    qty:4, price:80,  served:false, instructions:'' },
+    { cartId:3,  name:'Mango Lassi',    qty:2, price:120, served:false, instructions:'' },
+  ]},
+  { id:'ORD-1043', table:3,  status:'pending', time:'3 min ago', items:[
+    { cartId:4,  name:'Paneer Tikka',   qty:1, price:380, served:false, instructions:'Extra tikka masala' },
+    { cartId:5,  name:'Dal Makhani',    qty:1, price:280, served:false, instructions:'' },
+    { cartId:6,  name:'Jeera Rice',     qty:2, price:160, served:false, instructions:'' },
+  ]},
+];
+
+const SERVED_DATA = [
+  { id:'ORD-1038', table:2, time:'10:42 AM' },
+  { id:'ORD-1039', table:6, time:'10:55 AM' },
+  { id:'ORD-1041', table:4, time:'11:31 AM' },
+];
+
+createApp({
+  setup() {
+    const tab            = ref('tables');
+    const currentPage    = ref('main');  // 'main' | 'bill'
+    const waiterName     = ref('Sneha Patel');
+    const floor          = ref('A');
+    const shiftTime      = ref('6PM – 11PM');
+    const toasts         = ref([]);
+    const tables         = ref(TABLES_DATA.map(t => ({...t})));
+    const orders         = ref(ORDERS_DATA.map(o => ({...o, items: o.items.map(i=>({...i}))})));
+    const servedOrders   = ref([...SERVED_DATA]);
+    const selectedTable  = ref(null);
+    const billTable      = ref(null);
+    const showQrPayment  = ref(false);
+    let toastCounter = 1;
+
+    const legend = [
+      { label:'Free',     color:'#B0A49C' },
+      { label:'Occupied', color:'#6F4E37' },
+      { label:'Ready',    color:'#2A9D8F' },
+      { label:'Waiting',  color:'#E63946' },
+    ];
+
+    function goTab(t) { tab.value = t; }
+
+    function tableStatusLabel(t) {
+      if (t.status === 'free')     return 'Free';
+      if (t.status === 'occupied') return `${t.guests}p`;
+      if (t.status === 'ready')    return 'Pickup!';
+      if (t.status === 'waiting')  return 'Waiting';
+      return '';
+    }
+
+    function handleTableClick(t) {
+      if (t.status !== 'free') {
+        billTable.value = t;
+        currentPage.value = 'bill';
+      } else {
+        selectedTable.value = t;
+      }
+    }
+
+    function openTable(t) { selectedTable.value = t; }
+
+    function markSeated() {
+      if (!selectedTable.value) return;
+      selectedTable.value.status = 'occupied';
+      selectedTable.value.guests = 2;
+      selectedTable.value.since = new Date().toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+      showToast(`Table ${selectedTable.value.num} seated`, '👥');
+    }
+
+    function clearTable() {
+      if (!selectedTable.value) return;
+      selectedTable.value.status = 'free';
+      selectedTable.value.guests = 0;
+      selectedTable.value.since  = '';
+      selectedTable.value.spend  = 0;
+      showToast(`Table ${selectedTable.value.num} cleared`, '🧹');
+    }
+
+    function markPaid() {
+      if (!billTable.value) return;
+      showToast(`Table ${billTable.value.num} payment received ✅`, '💳');
+      billTable.value.status = 'free';
+      billTable.value.guests = 0;
+      billTable.value.since  = '';
+      billTable.value.spend  = 0;
+      currentPage.value = 'main';
+      billTable.value = null;
+    }
+
+    function toggleServed(item) { item.served = !item.served; }
+
+    function checkServeOrder(order) {
+      if (order.items.every(i => i.served)) {
+        serveOrder(order);
+      }
+    }
+
+    function serveItem(item, order) {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("en-IN", {hour:"2-digit", minute:"2-digit", hour12:true});
+      servedOrders.value.unshift({ id: order.id, table: order.table, dish: item.name, qty: item.qty, time: timeStr });
+      order.items = order.items.filter(i => i.cartId !== item.cartId);
+      if (order.items.length === 0) {
+        orders.value = orders.value.filter(o => o.id !== order.id);
+        const tbl = tables.value.find(t => t.num === order.table);
+        if (tbl && tbl.status === "ready") tbl.status = "occupied";
+      }
+      showToast(`${item.name} delivered to Table ${order.table}!`, "🍽️");
+    }
+
+    function serveOrder(order) {
+      const now = new Date(); const timeStr = now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true}); servedOrders.value.unshift({ id: order.id, table: order.table, time: timeStr });
+      orders.value = orders.value.filter(o => o.id !== order.id);
+      const tbl = tables.value.find(t => t.num === order.table);
+      if (tbl && tbl.status === 'ready') tbl.status = 'occupied';
+      showToast(`${order.id} served to Table ${order.table}!`, '🍽️');
+    }
+
+    // Bill items — all items from orders for this table
+    const billItems = computed(() => {
+      if (!billTable.value) return [];
+      return orders.value
+        .filter(o => o.table === billTable.value.num)
+        .flatMap(o => o.items);
+    });
+
+    const readyPickups     = computed(() => orders.value.filter(o => o.status === 'ready'));
+    const inProgressOrders = computed(() => orders.value.filter(o => o.status !== 'ready'));
+    const occupiedCount    = computed(() => tables.value.filter(t => t.status !== 'free').length);
+    const freeCount        = computed(() => tables.value.filter(t => t.status === 'free').length);
+
+    function showToast(msg, icon = '✅') {
+      const id = toastCounter++;
+      toasts.value.push({ id, message: msg, icon });
+      setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, 2500);
+    }
+
+    return {
+      tab, currentPage, waiterName, floor, shiftTime, toasts,
+      tables, orders, servedOrders, selectedTable, billTable, showQrPayment, legend,
+      goTab, tableStatusLabel, handleTableClick, openTable, markSeated, clearTable,
+      markPaid, toggleServed, checkServeOrder, serveOrder, serveItem,
+      billItems, readyPickups, inProgressOrders, occupiedCount, freeCount,
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

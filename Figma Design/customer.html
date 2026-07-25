@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>DineFlow — Customer Order</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            coffee:  { DEFAULT: '#6F4E37', light: '#8B6347', dark: '#4A3423' },
+            cream:   { DEFAULT: '#F8F5F0', dark:  '#EDE8E0' },
+            mint:    { DEFAULT: '#3AAFA9', light: '#4EC9C3', dark: '#2A8F8A' },
+            success: '#2A9D8F',
+            danger:  '#E63946',
+            amber:   '#F4A261',
+            gold:    '#E9C46A',
+          },
+          fontFamily: {
+            display: ['"Playfair Display"', 'serif'],
+            sans:    ['"DM Sans"', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #F8F5F0;
+      color: #1A1208;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Mobile shell — center on desktop ── */
+    #app {
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: #F8F5F0;
+      position: relative;
+      box-shadow: 0 0 60px rgba(111,78,55,0.12);
+    }
+
+    /* ── Screens ── */
+    .screen {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background: #F8F5F0;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 40;
+      background: rgba(248,245,240,0.95);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(111,78,55,0.1);
+      padding: 0.75rem 1rem;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .topbar-title {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700; font-size: 1.1rem;
+      color: #1A1208; flex: 1;
+    }
+
+    /* ── Bottom nav ── */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 430px;
+      background: #1A1208;
+      display: flex;
+      z-index: 40;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .bn-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 0.55rem 0.25rem 0.625rem;
+      color: #7A6E65; font-size: 0.6rem; font-weight: 600;
+      cursor: pointer; gap: 0.2rem; transition: color 0.2s;
+    }
+    .bn-item i { font-size: 1.2rem; }
+    .bn-item.active { color: #F4A261; }
+    .bn-item .bn-badge {
+      position: absolute; top: 6px;
+      background: #E63946; color: white;
+      font-size: 0.55rem; font-weight: 700;
+      padding: 0.1rem 0.32rem; border-radius: 2rem;
+      border: 1.5px solid #1A1208;
+    }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      background: #6F4E37; color: white;
+      border: none; border-radius: 0.75rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.9375rem; font-weight: 700;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: background 0.2s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .btn-primary:hover  { background: #8B6347; }
+    .btn-primary:active { transform: scale(0.97); }
+
+    .btn-mint {
+      background: #3AAFA9; color: white;
+      border: none; border-radius: 0.75rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.9375rem; font-weight: 700;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: background 0.2s;
+    }
+    .btn-mint:hover { background: #2A8F8A; }
+
+    .btn-outline {
+      background: transparent; color: #6F4E37;
+      border: 1.5px solid #6F4E37; border-radius: 0.75rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.9375rem; font-weight: 700;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    .btn-outline:hover { background: #6F4E37; color: white; }
+
+    /* ── Cards ── */
+    .card {
+      background: white;
+      border-radius: 1rem;
+      border: 1px solid rgba(111,78,55,0.08);
+      box-shadow: 0 2px 12px rgba(111,78,55,0.06);
+    }
+
+    /* ── Dish card ── */
+    .dish-card {
+      background: white;
+      border-radius: 1rem;
+      border: 1px solid rgba(111,78,55,0.08);
+      box-shadow: 0 2px 12px rgba(111,78,55,0.06);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .dish-card:active { transform: scale(0.98); }
+    .dish-card:hover  { box-shadow: 0 8px 24px rgba(111,78,55,0.14); }
+
+    /* ── Qty stepper ── */
+    .qty-stepper {
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .qty-btn {
+      width: 30px; height: 30px;
+      border-radius: 50%; border: none;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .qty-btn-minus { background: #EDE8E0; color: #6F4E37; }
+    .qty-btn-minus:hover { background: #D4C4B8; }
+    .qty-btn-plus  { background: #6F4E37; color: white; }
+    .qty-btn-plus:hover { background: #8B6347; }
+
+    /* ── Filter chips ── */
+    .filter-chip {
+      display: inline-block;
+      padding: 0.3rem 0.875rem;
+      border-radius: 2rem;
+      border: 1.5px solid #E5DDD5;
+      font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+      color: #6B5744; transition: all 0.15s;
+    }
+    .filter-chip:hover  { border-color: #6F4E37; color: #6F4E37; }
+    .filter-chip.active { background: #6F4E37; border-color: #6F4E37; color: white; }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.2rem 0.575rem;
+      border-radius: 2rem; font-size: 0.7rem; font-weight: 700;
+    }
+    .badge-green  { background: #D1F5F0; color: #1A6B63; }
+    .badge-red    { background: #FEE2E2; color: #991B1B; }
+    .badge-amber  { background: #FEF3C7; color: #92400E; }
+    .badge-coffee { background: #F0EBE3; color: #6F4E37; }
+    .badge-mint   { background: #D1F5F0; color: #1A6B63; }
+
+    /* ── Search input ── */
+    .search-input {
+      width: 100%; padding: 0.625rem 1rem 0.625rem 2.5rem;
+      border: 1.5px solid #E5DDD5; border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
+      background: white; transition: border-color 0.2s;
+      color: #1A1208;
+    }
+    .search-input:focus { border-color: #6F4E37; outline: none; }
+    .search-input::placeholder { color: #B0A498; }
+
+    /* ── Timeline ── */
+    .timeline-step {
+      display: flex; align-items: flex-start; gap: 1rem;
+      position: relative;
+    }
+    .timeline-dot {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; flex-shrink: 0; transition: all 0.3s;
+    }
+    .timeline-dot.done    { background: #2A9D8F; color: white; box-shadow: 0 0 0 4px rgba(42,157,143,0.2); }
+    .timeline-dot.active  { background: #6F4E37; color: white; box-shadow: 0 0 0 4px rgba(111,78,55,0.2); }
+    .timeline-dot.pending { background: #EDE8E0; color: #B0A498; }
+    .timeline-line {
+      position: absolute; left: 17px; top: 36px;
+      width: 2px; height: calc(100% + 16px);
+      background: #EDE8E0; z-index: 0;
+    }
+    .timeline-line.done { background: #2A9D8F; }
+
+    /* ── Scroll area ── */
+    .scroll-y { overflow-y: auto; }
+    .scroll-y::-webkit-scrollbar { width: 3px; }
+    .scroll-y::-webkit-scrollbar-thumb { background: #D4C8BE; border-radius: 4px; }
+
+    /* ── Scroll x (chips) ── */
+    .scroll-x {
+      overflow-x: auto; display: flex; gap: 0.5rem;
+      scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .scroll-x::-webkit-scrollbar { display: none; }
+
+    /* ── Toast ── */
+    .toast-container {
+      position: fixed; bottom: 5.5rem; left: 50%; transform: translateX(-50%);
+      z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem;
+      width: 90%; max-width: 380px;
+    }
+    .toast {
+      background: #1A1208; color: #F8F5F0;
+      padding: 0.75rem 1.125rem; border-radius: 0.875rem;
+      font-size: 0.875rem; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      display: flex; align-items: center; gap: 0.5rem;
+      animation: toastIn 0.3s ease;
+    }
+    @keyframes toastIn { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* ── Slide-up animation ── */
+    .slide-up { animation: slideUp 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+    @keyframes slideUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:none; } }
+
+    /* Stagger */
+    .stagger > *:nth-child(1) { animation-delay:0.04s; }
+    .stagger > *:nth-child(2) { animation-delay:0.08s; }
+    .stagger > *:nth-child(3) { animation-delay:0.12s; }
+    .stagger > *:nth-child(4) { animation-delay:0.16s; }
+    .stagger > *:nth-child(5) { animation-delay:0.20s; }
+    .stagger > *:nth-child(6) { animation-delay:0.24s; }
+    .stagger > *:nth-child(7) { animation-delay:0.28s; }
+    .stagger > *:nth-child(8) { animation-delay:0.32s; }
+
+    /* ── Fade transition ── */
+    .fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
+    .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+    /* ── Slide transition ── */
+    .slide-enter-active { transition: all 0.28s cubic-bezier(0.22,1,0.36,1); }
+    .slide-leave-active  { transition: all 0.2s ease-in; }
+    .slide-enter-from    { opacity:0; transform:translateX(30px); }
+    .slide-leave-to      { opacity:0; transform:translateX(-20px); }
+
+    /* ── Modals ── */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(26,18,8,0.55);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      display: flex; align-items: flex-end; justify-content: center;
+    }
+    .modal-sheet {
+      background: white;
+      border-radius: 1.5rem 1.5rem 0 0;
+      width: 100%; max-width: 430px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 1.25rem;
+      animation: sheetUp 0.35s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    @keyframes sheetUp { from { transform:translateY(100%); } to { transform:none; } }
+    .modal-handle {
+      width: 40px; height: 4px;
+      background: #D4C8BE; border-radius: 2px;
+      margin: 0 auto 1rem;
+    }
+
+    /* ── Pulse animation (landing) ── */
+    @keyframes pulse-ring {
+      0%   { transform: scale(1);   opacity: 0.6; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+    .pulse-ring {
+      position: absolute; inset: 0; border-radius: 50%;
+      background: rgba(111,78,55,0.2);
+      animation: pulse-ring 2s ease-out infinite;
+    }
+
+    /* ── Order status pulse ── */
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+    .blink { animation: blink 1.5s ease-in-out infinite; }
+
+    /* ── Progress bar ── */
+    .progress-track {
+      height: 6px; background: #EDE8E0; border-radius: 6px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 6px;
+      transition: width 0.6s cubic-bezier(0.22,1,0.36,1);
+    }
+
+    /* ── Cart item ── */
+    .cart-item {
+      display: flex; gap: 0.875rem; align-items: center;
+      padding: 0.875rem 0;
+      border-bottom: 1px solid rgba(111,78,55,0.07);
+    }
+
+    /* Desktop: show phone frame hint */
+    @media (min-width: 480px) {
+      body { background: #EDE8E0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+      #app { border-radius: 2rem; overflow: hidden; min-height: min(860px, 95vh); }
+      .bottom-nav { border-radius: 0; }
+    }
+
+    /* pb for bottom nav */
+    .pb-nav { padding-bottom: 4.5rem; }
+  </style>
+</head>
+
+<body>
+<div id="app">
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN: QR LANDING
+  ══════════════════════════════════════════════ -->
+  <div v-if="screen === 'landing'" class="screen slide-up" style="background:linear-gradient(160deg,#1A1208 0%,#3D2314 50%,#6F4E37 100%);justify-content:center;align-items:center;padding:2rem 2rem calc(2rem + env(safe-area-inset-bottom));">
+
+    <!-- Floating decorative circles -->
+    <div style="position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;pointer-events:none;">
+      <div style="position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(111,78,55,0.15);top:-80px;right:-80px;"></div>
+      <div style="position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(58,175,169,0.1);bottom:100px;left:-60px;"></div>
+      <div style="position:absolute;width:150px;height:150px;border-radius:50%;background:rgba(244,162,97,0.08);top:200px;right:20px;"></div>
+    </div>
+
+    <div style="text-align:center;position:relative;z-index:1;width:100%;">
+      <!-- Logo -->
+      <div style="position:relative;width:88px;height:88px;margin:0 auto 1.5rem;display:flex;align-items:center;justify-content:center;">
+        <div class="pulse-ring" style="animation-delay:0s;"></div>
+        <div class="pulse-ring" style="animation-delay:0.7s;"></div>
+        <div style="width:88px;height:88px;background:rgba(255,255,255,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.2);backdrop-filter:blur(8px);">
+          <span style="font-size:2.5rem;">☕</span>
+        </div>
+      </div>
+
+      <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:#F8F5F0;letter-spacing:-0.01em;margin-bottom:0.375rem;">DineFlow</div>
+      <div style="font-size:0.8rem;color:rgba(248,245,240,0.55);font-weight:500;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:2.5rem;">Fine Dining Experience</div>
+
+      <!-- Table badge -->
+      <div style="display:inline-flex;align-items:center;gap:0.625rem;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:2rem;padding:0.5rem 1.25rem;margin-bottom:2.5rem;backdrop-filter:blur(8px);">
+        <i class="bi bi-grid-3x3-gap-fill" style="color:#F4A261;font-size:1rem;"></i>
+        <span style="color:#F8F5F0;font-weight:700;font-size:0.9375rem;">Table {{ tableNumber }}</span>
+        <span style="width:6px;height:6px;border-radius:50%;background:#2A9D8F;box-shadow:0 0 0 3px rgba(42,157,143,0.3);"></span>
+        <span style="font-size:0.75rem;color:rgba(248,245,240,0.7);font-weight:600;">DineFlow</span>
+      </div>
+
+
+      <!-- Welcome card -->
+      <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);border-radius:1.25rem;padding:1.5rem;margin-bottom:2rem;backdrop-filter:blur(12px);text-align:left;">
+        <div style="font-size:0.7rem;color:rgba(248,245,240,0.5);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.5rem;">Welcome</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:600;color:#F8F5F0;margin-bottom:0.375rem;">Good {{ timeOfDay }}, Guest!</div>
+        <div style="font-size:0.8125rem;color:rgba(248,245,240,0.6);line-height:1.6;">Browse our menu, customize your order and track it live — all from your phone.</div>
+
+        <div style="display:flex;gap:1rem;margin-top:1.25rem;">
+          <div style="flex:1;text-align:center;background:rgba(255,255,255,0.06);border-radius:0.75rem;padding:0.625rem 0.5rem;">
+            <div style="font-size:1rem;margin-bottom:0.2rem;">🍽️</div>
+            <div style="font-size:0.65rem;color:rgba(248,245,240,0.6);font-weight:600;">48 Dishes</div>
+          </div>
+          <div style="flex:1;text-align:center;background:rgba(255,255,255,0.06);border-radius:0.75rem;padding:0.625rem 0.5rem;">
+            <div style="font-size:1rem;margin-bottom:0.2rem;">⚡</div>
+            <div style="font-size:0.65rem;color:rgba(248,245,240,0.6);font-weight:600;">Live Tracking</div>
+          </div>
+          <div style="flex:1;text-align:center;background:rgba(255,255,255,0.06);border-radius:0.75rem;padding:0.625rem 0.5rem;">
+            <div style="font-size:1rem;margin-bottom:0.2rem;">🤖</div>
+            <div style="font-size:0.65rem;color:rgba(248,245,240,0.6);font-weight:600;">AI Suggest</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-primary" style="width:100%;font-size:1rem;padding:0.9rem;border-radius:0.875rem;" @click="goTo('menu')">
+        <i class="bi bi-arrow-right-circle-fill" style="font-size:1.1rem;"></i>
+        Start Ordering
+      </button>
+
+      <div style="margin-top:1rem;font-size:0.75rem;color:rgba(248,245,240,0.4);">
+        Order · Track · Enjoy
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN: MENU
+  ══════════════════════════════════════════════ -->
+  <div v-else-if="screen === 'menu'" class="screen pb-nav">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div style="flex:1;">
+        <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:#1A1208;">Menu</div>
+        <div style="font-size:0.7rem;color:#9C8E84;font-weight:600;">Table {{ tableNumber }} · {{ filteredDishes.length }} items</div>
+      </div>
+      <button @click="goTo('cart')" style="position:relative;background:white;border:1.5px solid #E5DDD5;border-radius:0.625rem;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6F4E37;" >
+        <i class="bi bi-bag-fill" style="font-size:1rem;"></i>
+        <span v-if="cartCount > 0" style="position:absolute;top:-5px;right:-5px;background:#E63946;color:white;font-size:0.6rem;font-weight:700;padding:0.1rem 0.32rem;border-radius:2rem;border:1.5px solid #F8F5F0;">{{ cartCount }}</span>
+      </button>
+    </div>
+
+    <div class="scroll-y" style="flex:1;padding:0.875rem;padding-bottom:1rem;">
+
+      <!-- Search -->
+      <div style="position:relative;margin-bottom:0.875rem;">
+        <i class="bi bi-search" style="position:absolute;left:0.875rem;top:50%;transform:translateY(-50%);color:#9C8E84;font-size:0.875rem;"></i>
+        <input v-model="menuSearch" type="text" class="search-input" placeholder="Search dishes, ingredients…" />
+      </div>
+
+      <!-- AI Custom Dish Entry -->
+      <div @click="goTo('ai')" style="background:linear-gradient(135deg,#4A3423,#6F4E37);border-radius:1rem;padding:1rem 1.125rem;margin-bottom:0.875rem;cursor:pointer;display:flex;align-items:center;gap:0.875rem;border:1px solid rgba(255,255,255,0.08);">
+        <div style="width:44px;height:44px;background:rgba(255,255,255,0.1);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.375rem;">🤖</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;color:#F8F5F0;font-size:0.9375rem;">Create Custom Dish</div>
+          <div style="font-size:0.75rem;color:rgba(248,245,240,0.6);margin-top:0.1rem;">AI builds your perfect meal</div>
+        </div>
+        <i class="bi bi-chevron-right" style="color:rgba(248,245,240,0.5);"></i>
+      </div>
+
+      <!-- Category filters -->
+      <div class="scroll-x mb-3">
+        <span v-for="cat in menuCategories" :key="cat"
+              class="filter-chip" :class="{ active: menuCatFilter === cat }"
+              @click="menuCatFilter = cat">{{ cat }}</span>
+      </div>
+
+      <!-- Dishes grid -->
+      <div class="stagger" style="display:flex;flex-direction:column;gap:0.75rem;">
+        <div v-if="filteredDishes.length === 0" style="text-align:center;padding:3rem 1rem;color:#9C8E84;">
+          <div style="font-size:2.5rem;margin-bottom:0.5rem;">🔍</div>
+          <div style="font-weight:600;">No dishes found</div>
+          <div style="font-size:0.8125rem;margin-top:0.25rem;">Try a different search or category</div>
+        </div>
+
+        <div v-for="dish in filteredDishes" :key="dish.id" class="dish-card slide-up"
+             style="display:flex;gap:0;">
+
+          <!-- Left: info -->
+          <div style="flex:1;padding:0.875rem 0 0.875rem 0.875rem;" @click="openDishDetail(dish)">
+            <div style="display:flex;align-items:flex-start;gap:0.5rem;margin-bottom:0.375rem;">
+              <span style="font-size:1.625rem;flex-shrink:0;">{{ dish.image }}</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:0.9375rem;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ dish.name }}</div>
+                <div style="font-size:0.75rem;color:#9C8E84;margin-top:0.1rem;">{{ dish.category }}</div>
+              </div>
+            </div>
+            <div style="font-size:0.8rem;color:#9C8E84;line-height:1.5;margin-bottom:0.625rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ dish.description }}</div>
+            <div style="display:flex;align-items:center;gap:0.625rem;">
+              <span style="font-weight:700;color:#6F4E37;font-size:1rem;">₹{{ dish.price }}</span>
+              <span v-if="!dish.available" class="badge badge-red">Unavailable</span>
+            </div>
+          </div>
+
+          <!-- Right: add button -->
+          <div style="padding:0.875rem;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:0.5rem;min-width:70px;">
+            <div v-if="!dish.available" style="font-size:0.65rem;color:#9C8E84;text-align:center;">Not<br>available</div>
+            <template v-else>
+              <div v-if="cartQty(dish.id) === 0">
+                <button @click.stop="addToCart(dish)"
+                        style="width:36px;height:36px;border-radius:50%;background:#6F4E37;color:white;border:none;font-size:1.25rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;box-shadow:0 2px 8px rgba(111,78,55,0.3);">
+                  <i class="bi bi-plus"></i>
+                </button>
+              </div>
+              <div v-else class="qty-stepper" style="flex-direction:column;gap:0.25rem;">
+                <button class="qty-btn qty-btn-plus" @click.stop="addToCart(dish)" style="width:28px;height:28px;font-size:0.875rem;">
+                  <i class="bi bi-plus"></i>
+                </button>
+                <span style="font-weight:700;font-size:0.875rem;color:#6F4E37;text-align:center;min-width:20px;">{{ cartQty(dish.id) }}</span>
+                <button class="qty-btn qty-btn-minus" @click.stop="removeFromCart(dish.id)" style="width:28px;height:28px;font-size:0.875rem;">
+                  <i class="bi bi-dash"></i>
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sticky cart bar -->
+    <div v-if="cartCount > 0" style="padding:0.875rem 0.875rem 0.5rem;background:rgba(248,245,240,0.95);backdrop-filter:blur(10px);border-top:1px solid rgba(111,78,55,0.1);">
+      <button @click="goTo('cart')" class="btn-primary" style="width:100%;justify-content:space-between;">
+        <span style="background:rgba(255,255,255,0.25);padding:0.2rem 0.625rem;border-radius:2rem;font-size:0.8rem;">{{ cartCount }} items</span>
+        <span>View Cart</span>
+        <span style="font-weight:800;">₹{{ cartTotal }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN: DISH DETAIL
+  ══════════════════════════════════════════════ -->
+  <div v-else-if="screen === 'dish'" class="screen pb-nav">
+    <div class="topbar">
+      <button @click="goBack()" style="background:white;border:1.5px solid #E5DDD5;border-radius:0.625rem;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6F4E37;flex-shrink:0;">
+        <i class="bi bi-arrow-left" style="font-size:0.9rem;"></i>
+      </button>
+      <span class="topbar-title">Dish Details</span>
+    </div>
+
+    <div v-if="activeDish" class="scroll-y slide-up" style="flex:1;padding:1rem;">
+      <!-- Hero emoji -->
+      <div style="background:linear-gradient(135deg,#F0EBE3,#EDE8E0);border-radius:1.25rem;height:180px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;font-size:5rem;">
+        {{ activeDish.image }}
+      </div>
+
+      <!-- Name + badges -->
+      <div style="margin-bottom:0.875rem;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.375rem;">
+          <h2 style="font-family:'Playfair Display',serif;font-size:1.375rem;font-weight:700;color:#1A1208;flex:1;">{{ activeDish.name }}</h2>
+          <span style="font-family:'Playfair Display',serif;font-size:1.375rem;font-weight:700;color:#6F4E37;white-space:nowrap;">₹{{ activeDish.price }}</span>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.625rem;">
+          <span class="badge badge-coffee">{{ activeDish.category }}</span>
+          <span v-if="activeDish.available" class="badge badge-green">✓ Available</span>
+          <span v-else class="badge badge-red">Unavailable</span>
+        </div>
+        <p style="font-size:0.875rem;color:#6B5744;line-height:1.7;">{{ activeDish.description }}</p>
+      </div>
+
+      <!-- Ingredients preview -->
+      <div class="card" style="padding:1rem;margin-bottom:1rem;">
+        <div style="font-weight:700;font-size:0.875rem;margin-bottom:0.75rem;color:#1A1208;">🧾 Key Ingredients</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+          <span v-for="ing in (activeDish.ingredients||[]).slice(0,6)" :key="ing.id"
+                style="background:#F8F5F0;border:1px solid #E5DDD5;border-radius:2rem;padding:0.25rem 0.625rem;font-size:0.75rem;font-weight:500;color:#6B5744;">
+            {{ ing.name }}
+          </span>
+          <span v-if="(activeDish.ingredients||[]).length > 6"
+                style="background:#F8F5F0;border:1px solid #E5DDD5;border-radius:2rem;padding:0.25rem 0.625rem;font-size:0.75rem;color:#9C8E84;">
+            +{{ activeDish.ingredients.length - 6 }} more
+          </span>
+        </div>
+      </div>
+
+      <!-- Special instructions -->
+      <div class="card" style="padding:1rem;margin-bottom:1rem;">
+        <div style="font-weight:700;font-size:0.875rem;margin-bottom:0.625rem;color:#1A1208;">📝 Special Instructions</div>
+        <textarea v-model="specialInstructions" rows="3"
+                  placeholder="e.g. No onions, extra spicy, allergen info…"
+                  style="width:100%;border:1.5px solid #E5DDD5;border-radius:0.75rem;padding:0.625rem 0.875rem;font-family:'DM Sans',sans-serif;font-size:0.875rem;color:#1A1208;background:#FAFAF7;resize:none;transition:border-color 0.2s;"
+                  @focus="$event.target.style.borderColor='#6F4E37'"
+                  @blur="$event.target.style.borderColor='#E5DDD5'"></textarea>
+      </div>
+
+      <!-- Qty + Add -->
+      <div v-if="activeDish.available" style="display:flex;gap:0.75rem;align-items:center;">
+        <div class="qty-stepper" style="background:white;border:1.5px solid #E5DDD5;border-radius:0.75rem;padding:0.5rem 0.75rem;gap:0.75rem;">
+          <button class="qty-btn qty-btn-minus" @click="dishQty = Math.max(1, dishQty - 1)">
+            <i class="bi bi-dash"></i>
+          </button>
+          <span style="font-weight:700;font-size:1rem;color:#1A1208;min-width:24px;text-align:center;">{{ dishQty }}</span>
+          <button class="qty-btn qty-btn-plus" @click="dishQty++">
+            <i class="bi bi-plus"></i>
+          </button>
+        </div>
+        <button class="btn-primary" style="flex:1;" @click="addDishFromDetail">
+          <i class="bi bi-bag-plus-fill"></i>
+          Add to Cart · ₹{{ activeDish.price * dishQty }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN: AI CUSTOM DISH
+  ══════════════════════════════════════════════ -->
+  <div v-else-if="screen === 'ai'" class="screen pb-nav">
+    <div class="topbar">
+      <button @click="goBack()" style="background:white;border:1.5px solid #E5DDD5;border-radius:0.625rem;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6F4E37;flex-shrink:0;">
+        <i class="bi bi-arrow-left" style="font-size:0.9rem;"></i>
+      </button>
+      <span class="topbar-title">AI Custom Dish</span>
+    </div>
+
+    <div class="scroll-y slide-up" style="flex:1;padding:1rem;">
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#4A3423,#6F4E37);border-radius:1.25rem;padding:1.5rem;margin-bottom:1.25rem;text-align:center;">
+        <div style="font-size:2.5rem;margin-bottom:0.625rem;">🤖</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.125rem;font-weight:700;color:#F8F5F0;margin-bottom:0.375rem;">Build Your Perfect Dish</div>
+        <div style="font-size:0.8rem;color:rgba(248,245,240,0.65);">Tell our AI what you're craving and we'll create it</div>
+      </div>
+
+      <!-- Preferences -->
+      <div class="card" style="padding:1rem;margin-bottom:1rem;">
+        <div style="font-weight:700;font-size:0.875rem;margin-bottom:0.875rem;color:#1A1208;">🍴 Base Preferences</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+          <div>
+            <label style="font-size:0.75rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.3rem;">Base</label>
+            <select v-model="aiPrefs.base" style="width:100%;padding:0.5rem 0.75rem;border:1.5px solid #E5DDD5;border-radius:0.625rem;font-family:'DM Sans',sans-serif;font-size:0.8125rem;background:white;color:#1A1208;">
+              <option>Rice</option><option>Bread</option><option>Roti</option><option>Pasta</option><option>None</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.3rem;">Protein</label>
+            <select v-model="aiPrefs.protein" style="width:100%;padding:0.5rem 0.75rem;border:1.5px solid #E5DDD5;border-radius:0.625rem;font-family:'DM Sans',sans-serif;font-size:0.8125rem;background:white;color:#1A1208;">
+              <option>Chicken</option><option>Paneer</option><option>Mutton</option><option>Fish</option><option>Egg</option><option>None (Veg)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.3rem;">Spice Level</label>
+            <select v-model="aiPrefs.spice" style="width:100%;padding:0.5rem 0.75rem;border:1.5px solid #E5DDD5;border-radius:0.625rem;font-family:'DM Sans',sans-serif;font-size:0.8125rem;background:white;color:#1A1208;">
+              <option>Mild</option><option>Medium</option><option>Spicy</option><option>Extra Spicy</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:600;color:#6B5744;display:block;margin-bottom:0.3rem;">Cuisine</label>
+            <select v-model="aiPrefs.cuisine" style="width:100%;padding:0.5rem 0.75rem;border:1.5px solid #E5DDD5;border-radius:0.625rem;font-family:'DM Sans',sans-serif;font-size:0.8125rem;background:white;color:#1A1208;">
+              <option>North Indian</option><option>South Indian</option><option>Chinese</option><option>Continental</option><option>Thai</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dietary flags -->
+      <div class="card" style="padding:1rem;margin-bottom:1rem;">
+        <div style="font-weight:700;font-size:0.875rem;margin-bottom:0.75rem;color:#1A1208;">🥗 Dietary</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+          <span v-for="tag in dietaryTags" :key="tag"
+                @click="toggleDietaryTag(tag)"
+                :style="`padding:0.35rem 0.875rem;border-radius:2rem;border:1.5px solid ${aiPrefs.dietary.includes(tag)?'#6F4E37':'#E5DDD5'};background:${aiPrefs.dietary.includes(tag)?'#6F4E37':'white'};color:${aiPrefs.dietary.includes(tag)?'white':'#6B5744'};font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.15s;`">
+            {{ tag }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Freeform prompt -->
+      <div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+        <div style="font-weight:700;font-size:0.875rem;margin-bottom:0.625rem;color:#1A1208;">💬 Describe Your Craving</div>
+        <textarea v-model="aiPrompt" rows="3"
+                  placeholder="e.g. Something warm and rich with extra garlic, not too heavy…"
+                  style="width:100%;border:1.5px solid #E5DDD5;border-radius:0.75rem;padding:0.625rem 0.875rem;font-family:'DM Sans',sans-serif;font-size:0.875rem;color:#1A1208;background:#FAFAF7;resize:none;"
+                  @focus="$event.target.style.borderColor='#6F4E37'"
+                  @blur="$event.target.style.borderColor='#E5DDD5'"></textarea>
+      </div>
+
+      <!-- AI Result -->
+      <div v-if="aiResult" class="card slide-up" style="padding:1.125rem;margin-bottom:1.25rem;border:2px solid #6F4E37;">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.875rem;">
+          <span style="font-size:1.375rem;">{{ aiResult.image }}</span>
+          <div>
+            <div style="font-weight:700;font-size:1rem;color:#1A1208;">{{ aiResult.name }}</div>
+            <div style="font-size:0.75rem;color:#9C8E84;">AI Generated · {{ aiResult.category }}</div>
+          </div>
+          <span style="margin-left:auto;font-weight:700;color:#6F4E37;font-size:1.1rem;">₹{{ aiResult.price }}</span>
+        </div>
+        <p style="font-size:0.8125rem;color:#6B5744;line-height:1.6;margin-bottom:0.875rem;">{{ aiResult.description }}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:0.375rem;margin-bottom:0.875rem;">
+          <span v-for="tag in aiResult.tags" :key="tag"
+                style="background:#F0EBE3;border-radius:2rem;padding:0.2rem 0.575rem;font-size:0.7rem;color:#6F4E37;font-weight:600;">
+            {{ tag }}
+          </span>
+        </div>
+        <button class="btn-primary" style="width:100%;" @click="addAiDishToCart">
+          <i class="bi bi-bag-plus-fill"></i> Add to Cart · ₹{{ aiResult.price }}
+        </button>
+      </div>
+
+      <button class="btn-primary" style="width:100%;background:linear-gradient(135deg,#4A3423,#6F4E37);" @click="generateAiDish" :disabled="aiLoading">
+        <span v-if="aiLoading" class="blink">⚙️ Crafting your dish…</span>
+        <template v-else>
+          <i class="bi bi-stars"></i>
+          {{ aiResult ? 'Regenerate Suggestion' : 'Generate My Dish' }}
+        </template>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN: CART
+  ══════════════════════════════════════════════ -->
+  <div v-else-if="screen === 'cart'" class="screen pb-nav">
+    <div class="topbar">
+      <button @click="goBack()" style="background:white;border:1.5px solid #E5DDD5;border-radius:0.625rem;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6F4E37;flex-shrink:0;">
+        <i class="bi bi-arrow-left" style="font-size:0.9rem;"></i>
+      </button>
+      <span class="topbar-title">Your Cart</span>
+      <span class="badge badge-coffee" style="font-size:0.8rem;">{{ cartCount }} items</span>
+    </div>
+
+    <div class="scroll-y slide-up" style="flex:1;padding:1rem;">
+
+      <!-- Empty state -->
+      <div v-if="cart.length === 0" style="text-align:center;padding:4rem 2rem;color:#9C8E84;">
+        <div style="font-size:3.5rem;margin-bottom:0.875rem;">🛒</div>
+        <div style="font-weight:700;font-size:1rem;margin-bottom:0.375rem;">Your cart is empty</div>
+        <div style="font-size:0.8125rem;margin-bottom:1.5rem;">Add some delicious dishes to get started</div>
+        <button class="btn-primary" @click="goTo('menu')">Browse Menu</button>
+      </div>
+
+      <template v-else>
+        <!-- Table info strip -->
+        <div style="background:white;border:1.5px solid #E5DDD5;border-radius:0.875rem;padding:0.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:0.625rem;">
+            <i class="bi bi-qr-code" style="color:#6F4E37;font-size:1rem;"></i>
+            <div>
+              <div style="font-weight:700;font-size:0.875rem;">Table {{ tableNumber }}</div>
+              <div style="font-size:0.7rem;color:#9C8E84;">DineFlow Kitchen</div>
+            </div>
+          </div>
+          <span class="badge badge-green">Active</span>
+        </div>
+
+        <!-- Cart items -->
+        <div class="card" style="padding:0 1rem;margin-bottom:1rem;">
+          <div v-for="(item, idx) in cart" :key="item.cartId" class="cart-item">
+            <span style="font-size:1.625rem;flex-shrink:0;">{{ item.image }}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ item.name }}</div>
+              <div style="font-size:0.75rem;color:#9C8E84;margin-top:0.1rem;">₹{{ item.price }} each</div>
+              <div v-if="item.instructions" style="font-size:0.7rem;color:#9C8E84;margin-top:0.2rem;font-style:italic;">{{ item.instructions }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.375rem;flex-shrink:0;">
+              <div class="qty-stepper">
+                <button class="qty-btn qty-btn-minus" @click="updateCartQty(item.cartId, item.qty - 1)" style="width:26px;height:26px;font-size:0.8rem;"><i class="bi bi-dash"></i></button>
+                <span style="font-weight:700;font-size:0.875rem;min-width:20px;text-align:center;">{{ item.qty }}</span>
+                <button class="qty-btn qty-btn-plus" @click="updateCartQty(item.cartId, item.qty + 1)" style="width:26px;height:26px;font-size:0.8rem;"><i class="bi bi-plus"></i></button>
+              </div>
+              <div style="font-weight:700;color:#6F4E37;font-size:0.9375rem;">₹{{ item.price * item.qty }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Special request for order -->
+        <div class="card" style="padding:1rem;margin-bottom:1rem;">
+          <div style="font-weight:700;font-size:0.875rem;margin-bottom:0.5rem;">📝 Order Note</div>
+          <textarea v-model="orderNote" rows="2" placeholder="Any requests for the kitchen?" style="width:100%;border:1.5px solid #E5DDD5;border-radius:0.625rem;padding:0.5rem 0.75rem;font-family:'DM Sans',sans-serif;font-size:0.8125rem;color:#1A1208;background:#FAFAF7;resize:none;"></textarea>
+        </div>
+
+        <!-- Price breakdown -->
+        <div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+          <div style="font-weight:700;font-size:0.875rem;margin-bottom:0.875rem;">Bill Summary</div>
+          <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.75rem;">
+            <div style="display:flex;justify-content:space-between;font-size:0.875rem;color:#6B5744;">
+              <span>Subtotal ({{ cartCount }} items)</span><span>₹{{ cartTotal }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.875rem;color:#6B5744;">
+              <span>GST (5%)</span><span>₹{{ gstAmount }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.875rem;color:#6B5744;">
+              <span>Service Charge</span><span>₹0</span>
+            </div>
+          </div>
+          <div style="border-top:2px solid #EDE8E0;padding-top:0.75rem;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:700;font-size:1rem;">Total</span>
+            <span style="font-family:'Playfair Display',serif;font-size:1.375rem;font-weight:700;color:#6F4E37;">₹{{ grandTotal }}</span>
+          </div>
+        </div>
+
+        <button class="btn-primary" style="width:100%;font-size:1rem;padding:0.9rem;" @click="placeOrder">
+          <i class="bi bi-check-circle-fill"></i>
+          Place Order · ₹{{ grandTotal }}
+        </button>
+      </template>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN: ORDER TRACKING
+  ══════════════════════════════════════════════ -->
+  <div v-else-if="screen === 'tracking'" class="screen pb-nav">
+    <div class="topbar">
+      <span class="topbar-title">Order Status</span>
+      <span style="background:#F0EBE3;color:#6F4E37;padding:0.3rem 0.75rem;border-radius:2rem;font-size:0.75rem;font-weight:700;">{{ currentOrder?.id }}</span>
+    </div>
+
+    <div v-if="currentOrder" class="scroll-y slide-up" style="flex:1;padding:1rem;">
+
+      <!-- Status hero -->
+      <div :style="`background:${trackingStatusColor};border-radius:1.25rem;padding:1.5rem;margin-bottom:1.25rem;text-align:center;`">
+        <div style="font-size:2.75rem;margin-bottom:0.625rem;" class="blink">{{ trackingStatusIcon }}</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;color:white;margin-bottom:0.3rem;">{{ trackingStatusLabel }}</div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.75);">{{ trackingStatusSub }}</div>
+
+        <!-- Progress bar -->
+        <div style="margin-top:1.25rem;">
+          <div class="progress-track" style="background:rgba(255,255,255,0.25);">
+            <div class="progress-fill" :style="`width:${trackingProgress}%;background:white;`"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:0.375rem;font-size:0.65rem;color:rgba(255,255,255,0.7);font-weight:600;">
+            <span>Placed</span><span>Approved</span><span>Preparing</span><span>Ready</span><span>Served</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table info -->
+      <div style="margin-bottom:1.25rem;">
+        <div class="card" style="padding:0.875rem;text-align:center;">
+          <div style="font-size:0.65rem;color:#9C8E84;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">Table</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:#6F4E37;">{{ tableNumber }}</div>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="card" style="padding:1.125rem;margin-bottom:1.25rem;">
+        <div style="font-weight:700;font-size:0.875rem;margin-bottom:1rem;">Order Timeline</div>
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+          <div v-for="(step, idx) in trackingSteps" :key="step.label" class="timeline-step" style="position:relative;">
+            <div v-if="idx < trackingSteps.length - 1" class="timeline-line" :class="{ done: step.status === 'done' }"></div>
+            <div class="timeline-dot" :class="step.status">
+              <i :class="step.icon" style="font-size:0.875rem;"></i>
+            </div>
+            <div style="flex:1;padding-top:0.25rem;">
+              <div style="font-weight:700;font-size:0.875rem;color:#1A1208;">{{ step.label }}</div>
+              <div style="font-size:0.75rem;color:#9C8E84;margin-top:0.1rem;">{{ step.desc }}</div>
+            </div>
+            <div v-if="step.time" style="font-size:0.7rem;color:#9C8E84;font-weight:600;padding-top:0.3rem;">{{ step.time }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Items ordered -->
+      <div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+        <div style="font-weight:700;font-size:0.875rem;margin-bottom:0.75rem;">Items Ordered</div>
+        <div v-for="item in currentOrder.items" :key="item.cartId" style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid rgba(111,78,55,0.07);">
+          <div style="display:flex;align-items:center;gap:0.625rem;">
+            <span style="font-size:1.25rem;">{{ item.image }}</span>
+            <div>
+              <div style="font-weight:600;font-size:0.875rem;">{{ item.name }}</div>
+              <div style="font-size:0.75rem;color:#9C8E84;">x{{ item.qty }}</div>
+            </div>
+          </div>
+          <span style="font-weight:700;color:#6F4E37;font-size:0.875rem;">₹{{ item.price * item.qty }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding-top:0.75rem;font-weight:700;font-size:1rem;">
+          <span>Total Paid</span>
+          <span style="color:#6F4E37;">₹{{ currentOrder.total }}</span>
+        </div>
+      </div>
+
+      <button class="btn-primary" style="width:100%;background:#3AAFA9;" @click="goTo('history')">
+        <i class="bi bi-clock-history"></i> View Order History
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN: ORDER HISTORY
+  ══════════════════════════════════════════════ -->
+  <div v-else-if="screen === 'history'" class="screen pb-nav">
+    <div class="topbar">
+      <button @click="goBack()" style="background:white;border:1.5px solid #E5DDD5;border-radius:0.625rem;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6F4E37;flex-shrink:0;">
+        <i class="bi bi-arrow-left" style="font-size:0.9rem;"></i>
+      </button>
+      <span class="topbar-title">Order History</span>
+    </div>
+
+    <div class="scroll-y slide-up" style="flex:1;padding:1rem;display:flex;flex-direction:column;gap:1rem;">
+      <div v-if="orderHistory.length === 0" style="text-align:center;padding:4rem 2rem;color:#9C8E84;">
+        <div style="font-size:3rem;margin-bottom:0.75rem;">📋</div>
+        <div style="font-weight:600;">No orders yet</div>
+        <div style="font-size:0.8125rem;margin-top:0.25rem;">Your past orders will appear here</div>
+      </div>
+
+      <div v-for="order in orderHistory" :key="order.id" class="card slide-up" style="padding:1.25rem;">
+
+        <!-- Header row -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.875rem;">
+          <div>
+            <div style="font-weight:700;font-size:0.9375rem;color:#1A1208;">{{ order.id }}</div>
+            <div style="font-size:0.75rem;color:#9C8E84;margin-top:0.1rem;">{{ order.date }} · Table {{ order.table }}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Playfair Display',serif;font-size:1.375rem;font-weight:700;color:#6F4E37;">₹{{ order.total }}</div>
+            <span :class="`badge ${order.status==='Delivered'?'badge-green':order.status==='Preparing'?'badge-amber':'badge-coffee'}`">
+              {{ order.status }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="border-top:1px dashed rgba(111,78,55,0.15);margin-bottom:0.875rem;"></div>
+
+        <!-- Items list -->
+        <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.875rem;">
+          <div v-for="item in order.items" :key="item.cartId || item.name"
+               style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <span style="font-size:1.1rem;">{{ item.image }}</span>
+              <span style="font-size:0.875rem;font-weight:500;color:#1A1208;">{{ item.name }}</span>
+              <span style="font-size:0.75rem;color:#9C8E84;">x{{ item.qty }}</span>
+            </div>
+            <span style="font-size:0.875rem;font-weight:600;color:#6B5744;">₹{{ item.price * item.qty }}</span>
+          </div>
+        </div>
+
+        <!-- Bill mini -->
+        <div style="background:#F8F5F0;border-radius:0.625rem;padding:0.625rem 0.875rem;margin-bottom:0.875rem;display:flex;justify-content:space-between;align-items:center;font-size:0.8125rem;">
+          <span style="color:#9C8E84;">GST (5%)</span>
+          <span style="color:#9C8E84;">₹{{ Math.round(order.total * 0.05) }}</span>
+        </div>
+
+        <!-- Reorder -->
+        <button class="btn-outline" style="width:100%;padding:0.625rem;" @click="reorder(order)">
+          <i class="bi bi-arrow-repeat"></i> Reorder
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       BOTTOM NAV
+  ══════════════════════════════════════════════ -->
+  <nav v-if="screen !== 'landing'" class="bottom-nav">
+    <div class="bn-item" :class="{ active: screen === 'menu' }" @click="goTo('menu')" style="position:relative;">
+      <i class="bi bi-grid-fill"></i>
+      <span>Menu</span>
+    </div>
+    <div class="bn-item" :class="{ active: screen === 'cart' }" @click="goTo('cart')" style="position:relative;">
+      <i class="bi bi-bag-fill"></i>
+      <span v-if="cartCount > 0" class="bn-badge">{{ cartCount }}</span>
+      <span>Cart</span>
+    </div>
+    <div class="bn-item" :class="{ active: screen === 'tracking' }" @click="currentOrder ? goTo('tracking') : showToast('Place an order first to track it','ℹ️')" style="position:relative;opacity:1;">
+      <i class="bi bi-lightning-fill"></i>
+      <span>Track</span>
+    </div>
+    <div class="bn-item" :class="{ active: screen === 'history' }" @click="goTo('history')">
+      <i class="bi bi-clock-history"></i>
+      <span>History</span>
+    </div>
+  </nav>
+
+  <!-- Toast container -->
+  <div class="toast-container">
+    <div v-for="t in toasts" :key="t.id" class="toast">
+      <span>{{ t.icon }}</span>{{ t.message }}
+    </div>
+  </div>
+
+  <!-- AI Floating Action Button (all screens except landing & ai) -->
+  <button v-if="screen !== 'landing' && screen !== 'ai'"
+          @click="goTo('ai')"
+          style="position:fixed;bottom:5.5rem;right:max(calc(50% - 202px), 12px);width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#4A3423,#6F4E37);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 20px rgba(111,78,55,0.45);z-index:45;transition:transform 0.2s,box-shadow 0.2s;"
+          onmouseover="this.style.transform='scale(1.1)'"
+          onmouseout="this.style.transform='scale(1)'"
+          title="AI Custom Dish">
+    🤖
+  </button>
+
+</div>
+
+<script type="module">
+const { createApp, ref, reactive, computed, watch } = Vue;
+
+// ── Mock Data ─────────────────────────────────────────────────────────────────
+const DISHES = [
+  { id:1,  name:"Butter Chicken",    category:"Main Course", price:580, cost:320, available:true,  popular:true,  image:"🍛", description:"Tender chicken in a rich, creamy tomato-based sauce with aromatic spices. A timeless North Indian classic.", ingredients:[{id:1,name:"Chicken (Broiler)"},{id:2,name:"Butter"},{id:3,name:"Cream"},{id:4,name:"Tomatoes"},{id:5,name:"Garam Masala"}] },
+  { id:2,  name:"Paneer Tikka",      category:"Starter",     price:380, cost:180, available:true,  popular:true,  image:"🧀", description:"Marinated cottage cheese cubes grilled to perfection with bell peppers and onions. Smoky and delightful.", ingredients:[{id:1,name:"Paneer"},{id:2,name:"Cream"},{id:3,name:"Tomatoes"}] },
+  { id:3,  name:"Chicken Biryani",   category:"Main Course", price:520, cost:280, available:true,  popular:true,  image:"🍚", description:"Fragrant basmati rice slow-cooked with spiced chicken, saffron, and caramelized onions. Royal flavour.", ingredients:[{id:1,name:"Chicken"},{id:2,name:"Basmati Rice"},{id:3,name:"Onions"},{id:4,name:"Garam Masala"}] },
+  { id:4,  name:"Dal Makhani",       category:"Main Course", price:280, cost:120, available:true,  popular:false, image:"🫘", description:"Slow-cooked black lentils simmered overnight with butter and cream. Rich, velvety and deeply comforting.", ingredients:[{id:1,name:"Butter"},{id:2,name:"Cream"},{id:3,name:"Tomatoes"}] },
+  { id:5,  name:"Mutton Rogan Josh", category:"Main Course", price:720, cost:420, available:false, popular:true,  image:"🍖", description:"Slow-braised mutton in a fiery Kashmiri sauce with whole spices. Deeply aromatic and bold.", ingredients:[{id:1,name:"Mutton"},{id:2,name:"Onions"},{id:3,name:"Garam Masala"}] },
+  { id:6,  name:"Fish Curry",        category:"Main Course", price:640, cost:350, available:true,  popular:false, image:"🐟", description:"Fresh pomfret in a tangy coconut-tomato curry. Light yet deeply flavourful coastal preparation.", ingredients:[{id:1,name:"Fish"},{id:2,name:"Tomatoes"},{id:3,name:"Turmeric"}] },
+  { id:7,  name:"Garlic Naan",       category:"Breads",      price:80,  cost:40,  available:true,  popular:true,  image:"🫓", description:"Fluffy leavened flatbread baked in a tandoor, brushed with garlic butter and fresh coriander.", ingredients:[{id:1,name:"Wheat Flour"},{id:2,name:"Butter"}] },
+  { id:8,  name:"Mango Lassi",       category:"Beverages",   price:120, cost:60,  available:true,  popular:true,  image:"🥭", description:"Chilled blended mango pulp with creamy yogurt, lightly sweetened and perfectly refreshing.", ingredients:[{id:1,name:"Mango Pulp"},{id:2,name:"Cream"}] },
+  { id:9,  name:"Gulab Jamun",       category:"Desserts",    price:80,  cost:35,  available:true,  popular:false, image:"🍮", description:"Soft milk-solid dumplings deep-fried to golden perfection, soaked in rose-flavored sugar syrup.", ingredients:[{id:1,name:"Wheat Flour"},{id:2,name:"Butter"}] },
+  { id:10, name:"Veg Thali",         category:"Thali",       price:420, cost:200, available:true,  popular:true,  image:"🍽️", description:"A wholesome complete meal — dal, sabzi, rice, roti, raita and dessert. All flavours in one.", ingredients:[{id:1,name:"Rice"},{id:2,name:"Paneer"},{id:3,name:"Tomatoes"}] },
+  { id:11, name:"Seekh Kebab",       category:"Starter",     price:420, cost:220, available:true,  popular:false, image:"🥙", description:"Spiced minced mutton skewered and grilled over hot charcoal. Smoky, juicy and absolutely delicious.", ingredients:[{id:1,name:"Mutton"},{id:2,name:"Onions"},{id:3,name:"Garam Masala"}] },
+  { id:12, name:"Raita",             category:"Sides",       price:60,  cost:30,  available:true,  popular:false, image:"🥣", description:"Chilled yogurt with cucumber, roasted cumin and fresh mint. Perfect companion for biryani.", ingredients:[{id:1,name:"Cream"},{id:2,name:"Onions"}] },
+  { id:13, name:"Masala Chai",       category:"Beverages",   price:60,  cost:20,  available:true,  popular:true,  image:"☕", description:"Bold tea brewed with ginger, cardamom, and cinnamon. The perfect end to a great meal.", ingredients:[{id:1,name:"Cardamom"},{id:2,name:"Ginger"}] },
+  { id:14, name:"Cold Coffee",       category:"Beverages",   price:150, cost:70,  available:true,  popular:false, image:"🧋", description:"Thick blended coffee with cream and ice. Rich, indulgent and deeply satisfying.", ingredients:[{id:1,name:"Coffee"},{id:2,name:"Cream"},{id:3,name:"Ice"}] },
+];
+
+const PAST_ORDERS = [
+  { id:"ORD-0991", date:"Yesterday, 7:30 PM", table:5, status:"Delivered", total:1260, items:[{name:"Butter Chicken",image:"🍛",qty:2,price:580},{name:"Garlic Naan",image:"🫓",qty:2,price:80}] },
+  { id:"ORD-0985", date:"2 days ago, 1:15 PM", table:5, status:"Delivered", total:880, items:[{name:"Veg Thali",image:"🍽️",qty:2,price:420},{name:"Mango Lassi",image:"🥭",qty:2,price:120}] },
+];
+
+const AI_TEMPLATES = [
+  { name:"Spiced Protein Bowl", image:"🥘", category:"Main Course", price:480, description:"A hearty bowl with your chosen protein, fragrant rice, slow-cooked lentil sauce and a drizzle of ghee. Nourishing and full of depth.", tags:["High Protein","Customized","Chef's Special"] },
+  { name:"Herb Tandoor Platter", image:"🍢", category:"Starter",     price:360, description:"A curated mix of grilled items — marinated, spiced and cooked in a live tandoor. Served with mint chutney and pickled onions.", tags:["Grilled","Personalized","Smoky"] },
+  { name:"Fusion Curry Bowl",   image:"🍛", category:"Main Course", price:520, description:"A unique fusion curry combining your preferred protein with aromatic spices, fresh herbs and a creamy gravy — made exactly your way.", tags:["Fusion","Crafted","Warm"] },
+  { name:"Signature Thali",     image:"🍽️", category:"Thali",       price:550, description:"A fully custom thali built around your preferences — dal, curry, rice, bread, dessert and pickle. The full Indian dining experience.", tags:["Complete Meal","Balanced","Traditional"] },
+];
+
+createApp({
+  setup() {
+    // ── State ──
+    const screen    = ref('landing');
+    const prevScreen = ref('menu');
+    const tableNumber = ref(7);
+    const cart      = ref([]);
+    const activeDish = ref(null);
+    const dishQty   = ref(1);
+    const specialInstructions = ref('');
+    const orderNote = ref('');
+    const menuSearch    = ref('');
+    const menuCatFilter = ref('All');
+    const currentOrder  = ref(null);
+    const orderHistory  = ref([...PAST_ORDERS]);
+    const trackingStep  = ref(0); // 0=placed,1=approved,2=preparing,3=ready,4=delivered
+    const toasts = ref([]);
+    const showQrModal = ref(false);
+    const aiPrefs = reactive({ base:'Rice', protein:'Chicken', spice:'Medium', cuisine:'North Indian', dietary:[] });
+    const aiPrompt = ref('');
+    const aiResult = ref(null);
+    const aiLoading = ref(false);
+
+    const dietaryTags = ['Jain', 'Vegan', 'Gluten-Free', 'No Onion', 'No Garlic', 'Low Calorie', 'High Protein'];
+
+    let cartIdCounter = 1;
+    let toastCounter  = 1;
+
+    // ── Navigation ──
+    function goTo(s) { prevScreen.value = screen.value; screen.value = s; }
+    function goBack() { screen.value = prevScreen.value; }
+
+    // ── Time of day ──
+    const timeOfDay = computed(() => {
+      const h = new Date().getHours();
+      return h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
+    });
+
+    // ── Menu ──
+    const menuCategories = computed(() => ['All', ...new Set(DISHES.filter(d => d.available).map(d => d.category))]);
+    const filteredDishes  = computed(() => {
+      return DISHES.filter(d => {
+        if (!d.available) return false;
+        const matchCat = menuCatFilter.value === 'All' || d.category === menuCatFilter.value;
+        const matchQ   = d.name.toLowerCase().includes(menuSearch.value.toLowerCase()) ||
+                         d.description.toLowerCase().includes(menuSearch.value.toLowerCase());
+        return matchCat && matchQ;
+      });
+    });
+
+    // ── Cart ──
+    const cartCount = computed(() => cart.value.reduce((s, i) => s + i.qty, 0));
+    const cartTotal = computed(() => cart.value.reduce((s, i) => s + i.price * i.qty, 0));
+    const gstAmount = computed(() => Math.round(cartTotal.value * 0.05));
+    const grandTotal = computed(() => cartTotal.value + gstAmount.value);
+
+    function cartQty(dishId) {
+      const found = cart.value.find(i => i.dishId === dishId);
+      return found ? found.qty : 0;
+    }
+    function addToCart(dish) {
+      const existing = cart.value.find(i => i.dishId === dish.id);
+      if (existing) { existing.qty++; }
+      else { cart.value.push({ cartId: cartIdCounter++, dishId: dish.id, name: dish.name, image: dish.image, price: dish.price, qty: 1, instructions: '' }); }
+      showToast(`${dish.name} added`, '✅');
+    }
+    function removeFromCart(dishId) {
+      const idx = cart.value.findIndex(i => i.dishId === dishId);
+      if (idx === -1) return;
+      if (cart.value[idx].qty > 1) { cart.value[idx].qty--; }
+      else { cart.value.splice(idx, 1); }
+    }
+    function updateCartQty(cartId, newQty) {
+      if (newQty <= 0) { cart.value = cart.value.filter(i => i.cartId !== cartId); return; }
+      const item = cart.value.find(i => i.cartId === cartId);
+      if (item) item.qty = newQty;
+    }
+
+    // ── Dish Detail ──
+    function openDishDetail(dish) { activeDish.value = dish; dishQty.value = 1; specialInstructions.value = ''; goTo('dish'); }
+    function addDishFromDetail() {
+      const existing = cart.value.find(i => i.dishId === activeDish.value.id);
+      if (existing) { existing.qty += dishQty.value; if (specialInstructions.value) existing.instructions = specialInstructions.value; }
+      else { cart.value.push({ cartId: cartIdCounter++, dishId: activeDish.value.id, name: activeDish.value.name, image: activeDish.value.image, price: activeDish.value.price, qty: dishQty.value, instructions: specialInstructions.value }); }
+      showToast(`${activeDish.value.name} × ${dishQty.value} added`, '✅');
+      goTo('menu');
+    }
+
+    // ── AI Dish ──
+    function toggleDietaryTag(tag) {
+      const idx = aiPrefs.dietary.indexOf(tag);
+      if (idx === -1) aiPrefs.dietary.push(tag);
+      else aiPrefs.dietary.splice(idx, 1);
+    }
+    function generateAiDish() {
+      aiLoading.value = true;
+      aiResult.value = null;
+      setTimeout(() => {
+        const template = AI_TEMPLATES[Math.floor(Math.random() * AI_TEMPLATES.length)];
+        aiResult.value = { ...template, price: template.price + Math.floor(Math.random() * 60 - 30) };
+        aiLoading.value = false;
+        showToast('AI dish created!', '🤖');
+      }, 1800);
+    }
+    function addAiDishToCart() {
+      cart.value.push({ cartId: cartIdCounter++, dishId: 999, name: aiResult.value.name, image: aiResult.value.image, price: aiResult.value.price, qty: 1, instructions: `AI Custom: ${aiPrefs.protein}, ${aiPrefs.spice}, ${aiPrefs.cuisine}` });
+      showToast(`${aiResult.value.name} added`, '🤖');
+      goTo('cart');
+    }
+
+    // ── Order ──
+    function placeOrder() {
+      const orderId = 'ORD-' + (1040 + orderHistory.value.length + 1);
+      currentOrder.value = { id: orderId, table: tableNumber.value, items: [...cart.value.map(i => ({...i}))], total: grandTotal.value, note: orderNote.value, placedAt: new Date() };
+      orderHistory.value.unshift({ id: orderId, date: 'Just now', table: tableNumber.value, status: 'Pending', total: grandTotal.value, items: currentOrder.value.items.map(i => ({...i})) });
+      cart.value = [];
+      orderNote.value = '';
+      trackingStep.value = 0;
+      showToast(`Order ${orderId} placed!`, '🎉');
+      goTo('tracking');
+    }
+
+    // ── Tracking ──
+    const trackingSteps = computed(() => {
+      const steps = [
+        { label:'Order Placed',    icon:'bi bi-receipt',           desc:'Your order has been sent to the manager',        time:'Just now'   },
+        { label:'Approved',        icon:'bi bi-check2-circle',     desc:'Manager approved your order',                    time:trackingStep.value >= 1 ? '2 min ago' : '' },
+        { label:'Chef Preparing',  icon:'bi bi-fire',              desc:'Our chef is preparing your dishes',              time:trackingStep.value >= 2 ? '5 min ago' : '' },
+        { label:'Ready to Serve',  icon:'bi bi-bell-fill',         desc:'Your order is ready at the kitchen counter',     time:trackingStep.value >= 3 ? '18 min ago' : '' },
+        { label:'Served',          icon:'bi bi-emoji-smile-fill',  desc:'Enjoy your meal!',                               time:trackingStep.value >= 4 ? '22 min ago' : '' },
+      ];
+      return steps.map((s, i) => ({ ...s, status: i < trackingStep.value ? 'done' : i === trackingStep.value ? 'active' : 'pending' }));
+    });
+
+    const trackingStatusMap = [
+      { label:'Awaiting Approval', sub:'Manager is reviewing your order', icon:'⏳', color:'linear-gradient(135deg,#4A3423,#6F4E37)', progress:10 },
+      { label:'Order Approved!',   sub:'Sent to chef — preparation starting', icon:'✅', color:'linear-gradient(135deg,#227d71,#2A9D8F)', progress:30 },
+      { label:'Chef is Cooking',   sub:'Our chef is preparing your meal with care', icon:'👨‍🍳', color:'linear-gradient(135deg,#C96B1A,#F4A261)', progress:60 },
+      { label:'Ready to Serve!',   sub:'Your food is at the counter — waiter on the way', icon:'🔔', color:'linear-gradient(135deg,#1A6B63,#3AAFA9)', progress:85 },
+      { label:'Enjoy Your Meal!',  sub:'Served at your table. Bon appétit!', icon:'🎉', color:'linear-gradient(135deg,#4A3423,#8B6347)', progress:100 },
+    ];
+    const trackingStatusColor = computed(() => trackingStatusMap[trackingStep.value]?.color || trackingStatusMap[0].color);
+    const trackingStatusLabel = computed(() => trackingStatusMap[trackingStep.value]?.label || '');
+    const trackingStatusSub   = computed(() => trackingStatusMap[trackingStep.value]?.sub   || '');
+    const trackingStatusIcon  = computed(() => trackingStatusMap[trackingStep.value]?.icon  || '');
+    const trackingProgress    = computed(() => trackingStatusMap[trackingStep.value]?.progress || 0);
+    const estTime = computed(() => Math.max(0, 20 - trackingStep.value * 5));
+
+    function advanceTracking() {
+      if (trackingStep.value < 4) {
+        trackingStep.value++;
+        showToast(trackingStatusLabel.value, trackingStatusIcon.value);
+        if (currentOrder.value && orderHistory.value.length > 0) {
+          const statuses = ['Pending','Approved','Preparing','Ready','Delivered'];
+          orderHistory.value[0].status = statuses[trackingStep.value];
+        }
+      }
+    }
+
+    // ── Reorder ──
+    function reorder(order) {
+      order.items.forEach(item => {
+        const existing = cart.value.find(i => i.name === item.name);
+        if (existing) existing.qty += item.qty;
+        else cart.value.push({ cartId: cartIdCounter++, dishId: Math.random(), name: item.name, image: item.image, price: item.price, qty: item.qty, instructions: '' });
+      });
+      showToast('Items added to cart!', '🔄');
+      goTo('cart');
+    }
+
+    // ── Toasts ──
+    function showToast(message, icon = '✅') {
+      const id = toastCounter++;
+      toasts.value.push({ id, message, icon });
+      setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, 2500);
+    }
+
+    return {
+      screen, prevScreen, tableNumber, cart, activeDish, dishQty, specialInstructions, orderNote,
+      menuSearch, menuCatFilter, currentOrder, orderHistory, trackingStep, toasts, showQrModal,
+      aiPrefs, aiPrompt, aiResult, aiLoading, dietaryTags,
+      timeOfDay, menuCategories, filteredDishes,
+      cartCount, cartTotal, gstAmount, grandTotal, cartQty,
+      trackingSteps, trackingStatusColor, trackingStatusLabel, trackingStatusSub, trackingStatusIcon, trackingProgress, estTime,
+      goTo, goBack, addToCart, removeFromCart, updateCartQty,
+      openDishDetail, addDishFromDetail,
+      toggleDietaryTag, generateAiDish, addAiDishToCart,
+      placeOrder, advanceTracking, reorder, showToast,
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
