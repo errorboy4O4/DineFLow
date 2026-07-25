@@ -1,0 +1,1572 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DineFlow — Manager Dashboard</title>
+
+  <!-- Google Fonts: Playfair Display + DM Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            coffee: { DEFAULT: '#6F4E37', light: '#8B6347', dark: '#4A3423' },
+            cream: { DEFAULT: '#F8F5F0', dark: '#EDE8E0' },
+            mint: { DEFAULT: '#3AAFA9', light: '#4EC9C3', dark: '#2A8F8A' },
+            success: '#2A9D8F',
+            danger: '#E63946',
+            kitchen: '#1E1E1E',
+            amber: '#F4A261',
+            gold: '#E9C46A',
+          },
+          fontFamily: {
+            display: ['\"Playfair Display\"', 'serif'],
+            sans: ['\"DM Sans\"', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #F8F5F0;
+      color: #1A1208;
+      overflow-x: hidden;
+    }
+
+    /* Hide scrollbars but keep scrolling */
+    .df-hide-scrollbar {
+      -ms-overflow-style: none;   /* IE/Edge */
+      scrollbar-width: none;      /* Firefox */
+    }
+    .df-hide-scrollbar::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;              /* Chrome/Safari */
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 260px;
+      min-height: 100vh;
+      background: #1A1208;
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), width 0.3s;
+      flex-shrink: 0;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+    }
+    #sidebar.collapsed { width: 72px; }
+    #sidebar.collapsed .nav-label,
+    #sidebar.collapsed .sidebar-logo-text,
+    #sidebar.collapsed .sidebar-role { display: none; }
+    #sidebar.collapsed .nav-item { justify-content: center; padding: 0.75rem; }
+    #sidebar.collapsed .nav-icon { margin: 0; font-size: 1.35rem; }
+
+    .main-content {
+      margin-left: 260px;
+      height: 100vh;
+      transition: margin-left 0.3s cubic-bezier(0.4,0,0.2,1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .main-content.expanded { margin-left: 72px; }
+
+    @media (max-width: 767px) {
+      #sidebar { transform: translateX(-100%); width: 260px !important; }
+      #sidebar.mobile-open { transform: translateX(0); }
+      .main-content { margin-left: 0 !important; }
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 40;
+      pointer-events: none;
+    }
+    .sidebar-overlay.active {
+      display: block;
+      pointer-events: auto;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.625rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #9C8E84;
+      font-weight: 500;
+      font-size: 0.9375rem;
+      margin: 0.125rem 0.75rem;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.07); color: #F8F5F0; }
+    .nav-item.active { background: #6F4E37; color: #F8F5F0; }
+    .nav-icon { font-size: 1.2rem; flex-shrink: 0; }
+
+    .kpi-card {
+      background: white;
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      border: 1px solid rgba(111,78,55,0.1);
+      box-shadow: 0 2px 12px rgba(111,78,55,0.06);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(111,78,55,0.12); }
+
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+      background: #F0EBE3;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #8B6347;
+      padding: 0.75rem 1rem;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .data-table td {
+      padding: 0.875rem 1rem;
+      border-bottom: 1px solid rgba(111,78,55,0.08);
+      font-size: 0.9375rem;
+    }
+
+    .btn-primary {
+      background: #6F4E37;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.6rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover { background: #4A3423; }
+
+    .btn-ghost {
+      background: transparent;
+      color: #6F4E37;
+      border: 1.5px solid #E5DDD5;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1.125rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-ghost:hover { background: #6F4E37; color: white; }
+
+    .btn-danger {
+      background: #E63946;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1.125rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-danger:hover { background: #c72d39; }
+
+    .btn-success {
+      background: #2A9D8F;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1.125rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-success:hover { background: #227d71; }
+
+    .panel {
+      background: white;
+      border-radius: 1rem;
+      border: 1px solid rgba(111,78,55,0.1);
+      box-shadow: 0 2px 12px rgba(111,78,55,0.06);
+      overflow: hidden;
+    }
+
+    .scroll-y { overflow-y: auto; }
+    .scroll-y::-webkit-scrollbar { width: 4px; }
+    .scroll-y::-webkit-scrollbar-track { background: transparent; }
+    .scroll-y::-webkit-scrollbar-thumb { background: #D4C8BE; border-radius: 4px; }
+
+    /* Hide scrollbars but keep scroll behavior (use sparingly, per-component) */
+    .scrollbar-hidden { scrollbar-width: none; -ms-overflow-style: none; }
+    .scrollbar-hidden::-webkit-scrollbar { width: 0 !important; height: 0 !important; }
+
+    /* Pricing: slightly smaller ingredient table typography */
+    .pricing-ingredient-table th { font-size: 0.7rem; padding: 0.65rem 0.9rem; }
+    .pricing-ingredient-table td { font-size: 0.85rem; padding: 0.75rem 0.9rem; }
+
+    .toggle-wrap { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .toggle-wrap input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; cursor: pointer; inset: 0;
+      background: #D4C8BE; border-radius: 24px; transition: 0.3s;
+    }
+    .toggle-slider:before {
+      content: ''; position: absolute;
+      width: 18px; height: 18px;
+      left: 3px; bottom: 3px;
+      background: white; border-radius: 50%; transition: 0.3s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    input:checked + .toggle-slider { background: #2A9D8F; }
+    input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+    input[type=range] {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 6px;
+      background: #EDE8E0; border-radius: 6px; outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 20px; height: 20px;
+      background: #6F4E37; border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(111,78,55,0.4);
+    }
+
+    .fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
+    .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+    .toast-container {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .toast {
+      background: #1A1208; color: #F8F5F0;
+      padding: 0.75rem 1.25rem; border-radius: 0.75rem;
+      font-size: 0.875rem; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      display: flex; align-items: center; gap: 0.5rem;
+      animation: toastIn 0.3s ease;
+    }
+    @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    .num-input {
+      width: 80px; padding: 0.375rem 0.5rem;
+      border: 1.5px solid #E5DDD5; border-radius: 0.375rem;
+      font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
+      text-align: center; background: #FAFAF7;
+      transition: border-color 0.2s;
+    }
+    .num-input:focus { border-color: #6F4E37; outline: none; }
+
+    .search-input {
+      padding: 0.5rem 1rem 0.5rem 2.5rem;
+      border: 1.5px solid #E5DDD5; border-radius: 0.5rem;
+      font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
+      background: #FAFAF7; transition: border-color 0.2s;
+      width: 100%;
+    }
+    .search-input:focus { border-color: #6F4E37; outline: none; }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(248, 245, 240, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(111,78,55,0.1);
+    }
+
+    .cat-pill {
+      display: inline-block; padding: 0.3rem 0.875rem;
+      border-radius: 2rem; border: 1.5px solid #E5DDD5;
+      font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+      transition: all 0.15s; white-space: nowrap; color: #6B5744;
+    }
+    .cat-pill:hover { border-color: #6F4E37; color: #6F4E37; }
+    .cat-pill.active { background: #6F4E37; border-color: #6F4E37; color: white; }
+
+    .slide-up {
+      animation: slideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .stagger > *:nth-child(1) { animation-delay: 0.04s; }
+    .stagger > *:nth-child(2) { animation-delay: 0.08s; }
+    .stagger > *:nth-child(3) { animation-delay: 0.12s; }
+    .stagger > *:nth-child(4) { animation-delay: 0.16s; }
+    .stagger > *:nth-child(5) { animation-delay: 0.20s; }
+    .stagger > *:nth-child(6) { animation-delay: 0.24s; }
+
+    .order-item { cursor: pointer; transition: background 0.15s; border-radius: 0.75rem; padding: 0.875rem; border: 1.5px solid transparent; }
+    .order-item:hover { background: #F8F5F0; }
+    .order-item.selected { background: #FDF4ED; border-color: #6F4E37; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.4rem 0.75rem;
+      border-radius: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-align: center;
+    }
+    .badge-ok { background: #D1F5F0; color: #1A6B63; }
+    .badge-warn { background: #FEF3C7; color: #92400E; }
+    .badge-out { background: #FEE2E2; color: #991B1B; }
+    .badge-danger { background: #FEE2E2; color: #E63946; }
+    .badge-pending { background: #FEF3C7; color: #92400E; }
+
+    .stock-bar-wrap {
+      background: #EDE8E0;
+      height: 4px;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .stock-bar { height: 4px; border-radius: 3px; transition: width 0.3s; }
+  </style>
+</head>
+
+<body>
+<div id="app">
+  <template v-if="!isAuthenticated">
+    <manager-login-component @login-success="handleLoginSuccess" />
+  </template>
+
+  <template v-else>
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" :class="{'active': mobileSidebarOpen}" @click="closeMobileSidebar"></div>
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside id="sidebar" :class="{ 'collapsed': sidebarCollapsed, 'mobile-open': mobileSidebarOpen }">
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-5 py-5">
+      <div style="width:36px;height:36px;background:#6F4E37;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span style="font-size:1.1rem;">☕</span>
+      </div>
+      <div class="sidebar-logo-text">
+        <div style="font-family:'Playfair Display',serif;font-weight:700;color:#F8F5F0;font-size:1.125rem;line-height:1.2;">DineFlow</div>
+        <div class="sidebar-role" style="font-size:0.7rem;color:#9C8E84;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;">Manager Portal</div>
+      </div>
+    </div>
+
+    <hr style="border-color:rgba(255,255,255,0.07);margin:0 0.75rem 0.5rem;" />
+
+    <!-- Nav items -->
+    <nav style="flex:1;padding:0.25rem 0;" class="scroll-y">
+      <div v-for="item in navItems" :key="item.id"
+           class="nav-item" :class="{ active: currentPage === item.id }"
+           @click="navigate(item.id)"
+           :title="sidebarCollapsed ? item.label : ''">
+        <i class="nav-icon" :class="item.icon"></i>
+        <span class="nav-label">{{ item.label }}</span>
+        <span v-if="item.badge && !sidebarCollapsed" style="margin-left:auto;background:#E63946;color:white;font-size:0.65rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:2rem;">{{ item.badge }}</span>
+      </div>
+    </nav>
+
+    <!-- User info -->
+    <div style="padding:0.75rem 1.25rem 1.25rem;border-top:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:0.75rem;">
+      <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#6F4E37,#3AAFA9);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;color:white;font-size:0.875rem;">
+        {{ managerInitial }}
+      </div>
+      <div class="sidebar-logo-text">
+        <div style="font-size:0.875rem;font-weight:700;color:#F8F5F0;">{{ managerName }}</div>
+        <div style="font-size:0.7rem;color:#9C8E84;">Manager</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════ MAIN ═══════════ -->
+  <div class="main-content" :class="{ 'expanded': sidebarCollapsed }">
+
+    <!-- Topbar -->
+    <header class="topbar px-4 md:px-6 py-3 flex items-center gap-3">
+      <!-- Mobile hamburger -->
+      <button @click="openMobileSidebar" class="md:hidden" style="background:none;border:none;cursor:pointer;font-size:1.35rem;color:#4A3423;padding:0.25rem;">
+        <i class="bi bi-list"></i>
+      </button>
+
+      <!-- Page title -->
+      <h1 style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.25rem;color:#1A1208;flex:1;">
+        {{ currentPageLabel }}
+      </h1>
+
+        <!-- Right actions -->
+        <div class="flex items-center gap-2">
+        <!-- Refresh -->
+         <button @click="handleRefreshClick" style="position:relative;background:white;border:1.5px solid #E5DDD5;border-radius:0.5rem;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6F4E37;transition:all 0.2s;" onmouseover="this.style.background='#FDF4ED'" onmouseout="this.style.background='white'">
+           <i class="bi bi-arrow-clockwise" style="font-size:1rem;"></i>
+           <span v-if="bellDot" style="position:absolute;top:4px;right:4px;width:8px;height:8px;background:#E63946;border-radius:50%;border:1.5px solid white;"></span>
+         </button>
+        <!-- Date/time -->
+        <div style="background:white;border:1.5px solid #E5DDD5;border-radius:0.5rem;padding:0.4rem 0.875rem;font-size:0.8125rem;font-weight:600;color:#6B5744;white-space:nowrap;" class="hidden sm:block">
+          {{ currentTime }}
+        </div>
+        <!-- Logout button -->
+        <button @click="handleLogout" style="background:white;border:1.5px solid #E63946;border-radius:0.5rem;padding:0.4rem 0.875rem;font-size:0.8125rem;font-weight:600;color:#E63946;cursor:pointer;transition:all 0.2s;white-space:nowrap;" onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='white'">
+          <i class="bi bi-box-arrow-left" style="margin-right:0.25rem;"></i> Logout
+        </button>
+      </div>
+    </header>
+
+    <!-- ── PAGE CONTENT ── -->
+    <main class="p-4 md:p-6" style="width:100%;max-width:none;flex:1;min-height:0;overflow:auto;">
+      <transition name="fade" mode="out-in">
+        <component :is="currentComponent" :key="currentPage"
+                   v-bind="currentProps"
+                   style="flex:1;min-height:0;"
+                    @refresh="handleChildRefresh"
+                    @select="handleSelectOrder"
+                    @approve="handleApproveOrder"
+                    @reject="handleRejectOrder"
+                    @navigate="navigate" />
+      </transition>
+    </main>
+
+  </div>
+  <!-- End Authenticated Dashboard -->
+</template>
+
+  <!-- Toast Container -->
+  <div class="toast-container">
+    <div v-for="(toast, idx) in toasts" :key="idx" class="toast">
+      {{ toast }}
+    </div>
+  </div>
+</div>
+
+<script>
+  // If a module import or runtime error happens before Vue mounts, the page can look "blank".
+  // This overlay makes the root cause visible without opening DevTools.
+  (function () {
+    const el = document.createElement('div');
+    el.id = 'boot-error';
+    el.style.cssText = [
+      'position:fixed',
+      'left:16px',
+      'right:16px',
+      'bottom:16px',
+      'z-index:100000',
+      'padding:12px 14px',
+      'border-radius:12px',
+      'background:#1A1208',
+      'color:#F8F5F0',
+      'font:600 13px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
+      'box-shadow:0 12px 32px rgba(0,0,0,0.28)',
+      'display:none',
+      'white-space:pre-wrap'
+    ].join(';');
+    document.body.appendChild(el);
+
+    const show = (msg) => {
+      el.textContent = msg;
+      el.style.display = 'block';
+    };
+
+    window.__dineflow_boot = { mounted: false };
+
+    window.addEventListener('error', (e) => {
+      show('Dashboard failed to start.\n\nJS Error: ' + (e.message || 'Unknown error'));
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+      const reason = e && e.reason ? (e.reason.message || String(e.reason)) : 'Unknown promise rejection';
+      show('Dashboard failed to start.\n\nPromise Error: ' + reason);
+    });
+
+    setTimeout(() => {
+      if (!window.__dineflow_boot.mounted) {
+        show('Dashboard did not mount.\n\nIf this persists, open DevTools Console for details.');
+      }
+    }, 1500);
+  })();
+</script>
+
+<script type="module">
+  import DashboardComponent from './components/Dashboard.js';
+  import OrdersComponent from './components/Orders.js';
+  import InventoryComponent from './components/Inventory.js';
+  import MenuComponent from './components/Menu.js';
+  import PricingComponent from './components/Pricing.js';
+  import AnalyticsComponent from './components/Analytics.js';
+  import StaffControlComponent from './components/staffcontrol.js';
+  import SettingsComponent from './components/Settings.js';
+  import ManagerLoginComponent from './components/ManagerLogin.js';
+  import api from './js/api.js';
+
+  const { createApp, ref, computed, onMounted, onBeforeUnmount, watch } = Vue;
+
+  createApp({
+    components: {
+      DashboardComponent,
+      OrdersComponent,
+      InventoryComponent,
+      MenuComponent,
+      PricingComponent,
+      AnalyticsComponent,
+      StaffControlComponent,
+      SettingsComponent,
+      ManagerLoginComponent
+    },
+    setup() {
+      // Always start with login page - user must authenticate
+      const isAuthenticated = ref(false);
+      const currentPage = ref('dashboard');
+      const sidebarCollapsed = ref(false);
+      const mobileSidebarOpen = ref(false);
+      const toasts = ref([]);
+
+      const toYMD = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const da = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${da}`;
+      };
+
+      const formatTopbarTime = () => {
+        const n = new Date();
+        const time = n.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
+        const date = n.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+        return `${time} · ${date}`;
+      };
+
+      const currentTime = ref(formatTopbarTime());
+
+      const managerName = ref('Manager');
+      const managerInitial = computed(() => (managerName.value || 'M').trim().slice(0, 1).toUpperCase() || 'M');
+
+      // Data state (loaded from backend)
+      const inventory = ref([]);
+      const dishes = ref([]);
+      const pendingOrders = ref([]);
+      const selectedOrder = ref(null);
+      const recentActivity = ref([]);
+      let activityTimer = null;
+      let _activityInFlight = false;
+      let _activityBackoffMs = 0;
+      let _lastActivityPollAt = 0;
+      let _manualRefreshInFlight = false;
+
+        // Notification toggle preferences (stored in browser only; no DB change).
+        const NOTIF_STORAGE_KEY = 'dineflow:manager:notif_prefs:v1';
+        const ACTIVITY_SEEN_KEY = 'dineflow:manager:activity_seen_id:v1';
+        const DAILY_SUMMARY_SENT_KEY = 'dineflow:manager:daily_summary_sent_ymd:v1';
+
+       const defaultNotifPrefs = () => ({
+         new_orders: true,
+         low_stock: true,
+         daily_summary: false,
+         staff_notifications: true,
+       });
+
+       const readNotifPrefs = () => {
+         try {
+           const raw = localStorage.getItem(NOTIF_STORAGE_KEY);
+           if (!raw) return defaultNotifPrefs();
+           const parsed = JSON.parse(raw);
+           if (!parsed || typeof parsed !== 'object') return defaultNotifPrefs();
+           return { ...defaultNotifPrefs(), ...parsed };
+         } catch {
+           return defaultNotifPrefs();
+         }
+       };
+
+       const notificationPrefs = ref(readNotifPrefs());
+
+       const readSeenActivityId = () => {
+         try { return Number(localStorage.getItem(ACTIVITY_SEEN_KEY) || 0) || 0; } catch { return 0; }
+       };
+
+       const writeSeenActivityId = (id) => {
+         const n = Number(id || 0) || 0;
+         try { localStorage.setItem(ACTIVITY_SEEN_KEY, String(n)); } catch {}
+       };
+
+       const latestActivityId = ref(0);
+       const unseenActivityCount = ref(0);
+       const todaySnapshot = ref({ ymd: '', revenue: 0, orders_closed: 0, items_sold: 0 });
+
+       // In-app notifications (toasts + bell dot) are based on real data:
+       // - pending orders, low/out stock, and recent activity events.
+       // Toggles control whether we emit toasts / show bell dot.
+       let _armedNotifs = false;
+       let _lastPendingBatchIds = new Set();
+       let _lastLowStockIds = new Set();
+       let _lastOutOfStockIds = new Set();
+       let _lastActivityToastId = 0;
+
+       const _canNotify = (key) => {
+         const p = notificationPrefs.value || defaultNotifPrefs();
+         return p[key] !== false;
+       };
+
+       const _getInventoryAlertSets = () => {
+         const low = new Set();
+         const out = new Set();
+         for (const i of (inventory.value || [])) {
+           const id = String(i?.id ?? i?.ingredient_id ?? i?.name ?? '');
+           if (!id) continue;
+           const stock = Number(i?.stock);
+           const threshold = Number(i?.threshold);
+           if (!Number.isFinite(stock)) continue;
+           if (stock === 0) { out.add(id); continue; }
+           if (!Number.isFinite(threshold)) continue;
+           if (stock > 0 && stock < threshold) low.add(id);
+         }
+         return { low, out };
+       };
+
+       const _primeNotifBaselines = () => {
+         _lastPendingBatchIds = new Set((pendingOrders.value || []).map((o) => String(o?.id ?? '')));
+         const sets = _getInventoryAlertSets();
+         _lastLowStockIds = sets.low;
+         _lastOutOfStockIds = sets.out;
+         _lastActivityToastId = Number(latestActivityId.value || 0) || 0;
+       };
+
+       const _armNotifs = () => { _armedNotifs = true; };
+
+       const _readDailySummarySentYMD = () => {
+         try { return String(localStorage.getItem(DAILY_SUMMARY_SENT_KEY) || ''); } catch { return ''; }
+       };
+
+       const _writeDailySummarySentYMD = (ymd) => {
+         try { localStorage.setItem(DAILY_SUMMARY_SENT_KEY, String(ymd || '')); } catch {}
+       };
+
+       const maybeSendDailySummary = () => {
+         if (!_armedNotifs) return;
+         if (!isAuthenticated.value) return;
+         if (!_canNotify('daily_summary')) return;
+
+         const snap = todaySnapshot.value || {};
+         const ymd = String(snap.ymd || '');
+         if (!ymd) return;
+
+         // Fire once per day after 9pm local time (end-of-day summary).
+         const now = new Date();
+         const hour = now.getHours();
+         if (hour < 21) return;
+
+         const sent = _readDailySummarySentYMD();
+         if (sent === ymd) return;
+
+         const revenue = Number(snap.revenue || 0);
+         const orders = Number(snap.orders_closed || 0);
+         const items = Number(snap.items_sold || 0);
+         showToast(`Daily Summary — ₹${Math.round(revenue)} · ${orders} orders · ${items} items`, '📊');
+         _writeDailySummarySentYMD(ymd);
+       };
+
+       const bellDot = computed(() => {
+         const p = notificationPrefs.value || defaultNotifPrefs();
+         const hasNewOrders = (p.new_orders !== false) && ((pendingOrders.value || []).length > 0);
+         let lowOrOutCount = 0;
+         if (p.low_stock !== false) {
+           for (const i of (inventory.value || [])) {
+             const stock = Number(i?.stock);
+             const threshold = Number(i?.threshold);
+             if (!Number.isFinite(stock)) continue;
+             if (stock === 0) { lowOrOutCount += 1; continue; }
+             if (!Number.isFinite(threshold)) continue;
+             if (stock > 0 && stock < threshold) lowOrOutCount += 1;
+           }
+         }
+         const hasLowStock = (p.low_stock !== false) && (lowOrOutCount > 0);
+         const hasStaff = (p.staff_notifications !== false) && (Number(unseenActivityCount.value || 0) > 0);
+         return Boolean(hasNewOrders || hasLowStock || hasStaff);
+       });
+      const dashboardStats = ref({
+        todayRevenue: 0,
+        revenueTrendPercent: 0,
+        activeOrders: 0,
+        completedToday: 0,
+        tablesOccupied: 0,
+        tablesTotal: 0,
+        tablesFree: 0,
+        avgOrderValue: 0,
+        pendingApprovals: 0,
+        weeklyLabel: 'Last 7 days',
+        weekly: [],
+        status: { completed: 0, preparing: 0, pending: 0, cancelled: 0, total: 0, items: { completed: 0, preparing: 0, pending: 0, cancelled: 0, total: 0 } },
+      });
+      let dashboardTimer = null;
+      let _dashboardInFlight = false;
+      let _dashboardBackoffMs = 0;
+      let _lastDashboardPollAt = 0;
+      let _lastDashboardStatsAt = 0;
+      let _lastDashboardRefreshAt = 0;
+
+      // Orders page polling (keeps pending list fresh without forcing a full refresh)
+      let ordersTimer = null;
+      let _ordersInFlight = false;
+      let _ordersBackoffMs = 0;
+      let _lastOrdersPollAt = 0;
+
+      const lowStockItems = computed(() =>
+        (inventory.value || []).filter(i => {
+          const stock = Number(i.stock);
+          const threshold = Number(i.threshold);
+          if (!Number.isFinite(stock)) return false;
+          // Include out-of-stock items in alerts.
+          if (stock === 0) return true;
+          if (!Number.isFinite(threshold)) return false;
+          return stock > 0 && stock < threshold;
+        })
+      );
+
+      const outOfStock = computed(() =>
+        (inventory.value || []).filter(i => Number(i.stock) === 0)
+      );
+
+      const baseNavItems = ref([
+        { id: 'dashboard', label: 'Dashboard', icon: 'bi bi-speedometer2' },
+        { id: 'orders', label: 'Orders', icon: 'bi bi-clipboard-check' },
+        { id: 'inventory', label: 'Inventory', icon: 'bi bi-boxes' },
+        { id: 'menu', label: 'Menu', icon: 'bi bi-book' },
+        { id: 'pricing', label: 'Pricing', icon: 'bi bi-tag' },
+        { id: 'analytics', label: 'Analytics', icon: 'bi bi-bar-chart' },
+        { id: 'staff', label: 'Staff Control', icon: 'bi bi-people' },
+        { id: 'settings', label: 'Settings', icon: 'bi bi-gear' },
+      ]);
+
+      const navItems = computed(() => {
+        const ordersCount = (pendingOrders.value || []).length;
+        const invCount = (lowStockItems.value || []).length;
+        return baseNavItems.value.map((i) => {
+          if (i.id === 'orders') return { ...i, badge: ordersCount > 0 ? String(ordersCount) : null };
+          if (i.id === 'inventory') return { ...i, badge: invCount > 0 ? String(invCount) : null };
+          return { ...i, badge: null };
+        });
+      });
+
+      const currentPageLabel = computed(() => {
+        const item = navItems.value.find(i => i.id === currentPage.value);
+        return item ? item.label : 'Dashboard';
+      });
+
+      const currentComponent = computed(() => {
+        const componentMap = {
+          dashboard: 'DashboardComponent',
+          orders: 'OrdersComponent',
+          inventory: 'InventoryComponent',
+          menu: 'MenuComponent',
+          pricing: 'PricingComponent',
+          analytics: 'AnalyticsComponent',
+          staff: 'StaffControlComponent',
+          settings: 'SettingsComponent'
+        };
+        return componentMap[currentPage.value] || 'DashboardComponent';
+      });
+
+      const navigate = (page) => {
+        currentPage.value = page;
+        mobileSidebarOpen.value = false;
+      };
+
+      const openMobileSidebar = () => {
+        mobileSidebarOpen.value = true;
+      };
+
+      const closeMobileSidebar = () => {
+        mobileSidebarOpen.value = false;
+      };
+
+      const toggleSidebar = () => {
+        sidebarCollapsed.value = !sidebarCollapsed.value;
+      };
+
+      const showToast = (message, icon = '✅') => {
+        toasts.value.push(`${icon} ${message}`);
+        setTimeout(() => toasts.value.shift(), 3000);
+      };
+
+      const normalizeInventory = (ingredients) => (ingredients || []).map((ing) => {
+        const stock = Number(ing.current_quantity ?? 0);
+        const threshold = Number(ing.low_stock_threshold ?? 0);
+        return {
+          ...ing,
+          stock,
+          threshold
+        };
+      });
+
+      const normalizeDishes = (d) => (d || []).map((dish) => ({
+        ...dish,
+        base_price: Number(dish.base_price ?? 0)
+      }));
+
+      const loadInventory = async () => {
+        const res = await api.getInventory();
+        const prevLow = _lastLowStockIds;
+        const prevOut = _lastOutOfStockIds;
+        inventory.value = normalizeInventory(res.ingredients);
+
+        const nextSets = _getInventoryAlertSets();
+
+        if (_armedNotifs && _canNotify('low_stock')) {
+          const newOut = [...nextSets.out].filter((id) => !prevOut.has(id));
+          const newLow = [...nextSets.low].filter((id) => !prevLow.has(id));
+
+          if (newOut.length === 1) {
+            const item = (inventory.value || []).find((x) => String(x?.id ?? x?.ingredient_id ?? x?.name ?? '') === newOut[0]);
+            showToast(`Out of stock: ${item?.name || 'Ingredient'}`, '⛔');
+          } else if (newOut.length > 1) {
+            showToast(`${newOut.length} items out of stock`, '⛔');
+          }
+
+          if (newLow.length === 1) {
+            const item = (inventory.value || []).find((x) => String(x?.id ?? x?.ingredient_id ?? x?.name ?? '') === newLow[0]);
+            showToast(`Low stock: ${item?.name || 'Ingredient'}`, '⚠');
+          } else if (newLow.length > 1) {
+            showToast(`${newLow.length} items low on stock`, '⚠');
+          }
+        }
+
+        _lastLowStockIds = nextSets.low;
+        _lastOutOfStockIds = nextSets.out;
+      };
+
+      const loadDishes = async () => {
+        // Prefer full manager list; fallback to customer menu if older backend is running.
+        try {
+          const res = await api.getDishes();
+          dishes.value = normalizeDishes(res.dishes);
+        } catch (e) {
+          const res = await api.getMenu();
+          dishes.value = normalizeDishes(res.menu);
+        }
+      };
+
+      const loadOrders = async () => {
+        const res = await api.getOrders();
+        const list = res.pending_orders || res.pendingOrders || [];
+        const prevIds = _lastPendingBatchIds;
+        pendingOrders.value = list.map((o) => ({
+          id: o.batch_id ?? o.id,
+          order_id: o.order_id ?? null,
+          table: o.table_number ?? o.table,
+          created_at: o.created_at || null,
+          note: String(o.note || ''),
+          time: (() => {
+            try { return new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+            catch { return ''; }
+          })(),
+          items: (o.items || []).map((it) => ({
+            name: it.dish ?? it.name,
+            qty: it.qty ?? it.quantity ?? 0,
+            unit_cost: Number(it.unit_cost ?? it.cost ?? 0),
+            unit_price: Number(it.unit_price ?? it.price ?? 0),
+            margin_percent: Number(it.margin_percent ?? 0),
+            line_total: Number(it.line_total ?? 0),
+            category: it.category || ''
+          })),
+          total: Number(o.total ?? 0)
+        }));
+
+        const nextIds = new Set((pendingOrders.value || []).map((o) => String(o?.id ?? '')));
+
+        if (_armedNotifs && _canNotify('new_orders')) {
+          const newOnes = (pendingOrders.value || []).filter((o) => {
+            const id = String(o?.id ?? '');
+            return id && !prevIds.has(id);
+          });
+          if (newOnes.length === 1) {
+            const o = newOnes[0];
+            showToast(`New order placed — Table ${o.table}`, '🧾');
+          } else if (newOnes.length > 1) {
+            showToast(`${newOnes.length} new orders placed`, '🧾');
+          }
+        }
+
+        _lastPendingBatchIds = nextIds;
+
+        // Keep a stable selection
+        if (selectedOrder.value) {
+          const stillThere = pendingOrders.value.find(p => p.id === selectedOrder.value.id);
+          selectedOrder.value = stillThere || null;
+        }
+      };
+
+      const loadDashboardStats = async () => {
+        if (!isAuthenticated.value) return;
+        try {
+          const today = new Date();
+          const todayYMD = toYMD(today);
+          const lastWeek = new Date(today);
+          lastWeek.setDate(today.getDate() - 7);
+          const lastWeekYMD = toYMD(lastWeek);
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - 6);
+          const weekStartYMD = toYMD(weekStart);
+
+          const [todayRes, lastWeekRes, weekRes, tablesRes, liveRes] = await Promise.all([
+            api.getManagerAnalytics({ from: todayYMD, to: todayYMD }).catch(() => null),
+            api.getManagerAnalytics({ from: lastWeekYMD, to: lastWeekYMD }).catch(() => null),
+            api.getManagerAnalytics({ from: weekStartYMD, to: todayYMD }).catch(() => null),
+            api.getWaiterTablesStatus().catch(() => null),
+            api.getLiveBatches('', 200).catch(() => null),
+          ]);
+
+          const todayRevenue = Number(todayRes?.summary?.revenue_total || 0);
+          todaySnapshot.value = {
+            ymd: todayYMD,
+            revenue: todayRevenue,
+            orders_closed: Number(todayRes?.summary?.orders_closed || 0),
+            items_sold: Number(todayRes?.summary?.items_sold || 0),
+          };
+          const lastWeekRevenue = Number(lastWeekRes?.summary?.revenue_total || 0);
+          let revenueTrendPercent = 0;
+          if (lastWeekRevenue > 0) revenueTrendPercent = ((todayRevenue - lastWeekRevenue) / lastWeekRevenue) * 100;
+          else revenueTrendPercent = todayRevenue > 0 ? 100 : 0;
+
+          const rangeLabel = (() => {
+            try {
+              const startLbl = weekStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+              const endLbl = today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+              return `${startLbl} - ${endLbl}`;
+            } catch {
+              return 'Last 7 days';
+            }
+          })();
+
+          let weeklyLabel = rangeLabel;
+          let weeklySeries = (weekRes?.series || []).slice(-7);
+          let weekly = weeklySeries.map((x) => {
+            const ymd = String(x?.date || '');
+            let label = ymd;
+            try {
+              label = new Date(ymd + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+            } catch {}
+            return { date: ymd, label, total: Number(x?.total || 0) };
+          });
+
+          const tables = tablesRes?.tables || [];
+          const tablesTotal = Number(tables.length || 0);
+          const tablesOccupied = (tables || []).filter(t => String(t?.status || 'free') !== 'free').length;
+          const tablesFree = Math.max(0, tablesTotal - tablesOccupied);
+
+          // Completed today (for KPI card): CLOSED orders in analytics (payment received / bill closed).
+          const completedToday = Number(todayRes?.summary?.orders_closed || 0);
+
+          const liveBatches = liveRes?.live_batches || [];
+          const activeOrderIdSet = new Set();
+          for (const b of (liveBatches || [])) {
+            if (!['accepted', 'ready'].includes(String(b?.status || ''))) continue;
+            if (b?.order_id != null) activeOrderIdSet.add(String(b.order_id));
+          }
+          const activeOrders = activeOrderIdSet.size;
+          let activeOrderItems = 0;
+          for (const b of (liveBatches || [])) {
+            if (!['accepted', 'ready'].includes(String(b?.status || ''))) continue;
+            for (const it of (b?.items || [])) activeOrderItems += Number(it?.qty || 0) || 0;
+          }
+
+          const pendingOrderIdSet = new Set();
+          for (const o of (pendingOrders.value || [])) {
+            if (o?.order_id != null) pendingOrderIdSet.add(String(o.order_id));
+          }
+          const pendingApprovals = pendingOrderIdSet.size || (pendingOrders.value || []).length;
+          let pendingApprovalItems = 0;
+          for (const o of (pendingOrders.value || [])) {
+            for (const it of (o?.items || [])) pendingApprovalItems += Number(it?.qty || 0) || 0;
+          }
+          const avgOrderValue = Number((weekRes?.summary?.avg_order_value ?? todayRes?.summary?.avg_order_value ?? 0) || 0);
+
+          // Cancelled today: count rejected events in the (temporary) activity store.
+          let cancelled = 0;
+          let cancelledItems = 0;
+          const todayKey = toYMD(today);
+          for (const ev of (recentActivity.value || [])) {
+            if (String(ev?.kind || '') !== 'order_rejected') continue;
+            const ts = String(ev?.ts || '');
+            if (!ts) continue;
+            try {
+              const d = new Date(ts);
+              if (toYMD(d) === todayKey) {
+                cancelled += 1;
+                const meta = ev?.meta || {};
+                cancelledItems += Number(meta?.items_qty || meta?.items_count || 0) || 0;
+              }
+            } catch {}
+          }
+
+          // Order Status widget:
+          // - Completed: TODAY closed orders (and items sold) from analytics (independent of open tables)
+          // - Preparing/Pending: CURRENT open workload (orders + items)
+          // - Cancelled: TODAY rejections (from activity store)
+          const status = {
+            completed: Number(todayRes?.summary?.orders_closed || 0),
+            preparing: activeOrders,
+            pending: pendingApprovals,
+            cancelled,
+          };
+          status.total = status.completed + status.preparing + status.pending + status.cancelled;
+          status.items = {
+            completed: Number(todayRes?.summary?.items_sold || 0),
+            preparing: activeOrderItems,
+            pending: pendingApprovalItems,
+            cancelled: cancelledItems,
+          };
+          status.items.total = status.items.completed + status.items.preparing + status.items.pending + status.items.cancelled;
+
+          dashboardStats.value = {
+            todayRevenue,
+            revenueTrendPercent,
+            activeOrders,
+            completedToday,
+            tablesOccupied,
+            tablesTotal,
+            tablesFree,
+            avgOrderValue,
+            pendingApprovals,
+            weeklyLabel,
+            weekly,
+            status,
+          };
+
+          // "Daily Summary" toast (if enabled) is driven by real analytics and fires once/day after 9pm.
+          maybeSendDailySummary();
+        } catch (e) {
+          // Keep previously computed stats if a call fails.
+        }
+      };
+
+      const loadAll = async () => {
+        await Promise.all([loadInventory(), loadDishes(), loadOrders(), loadActivity()]);
+        await loadDashboardStats();
+
+        // First successful full-load: avoid notifying for "existing" rows, then arm for future changes.
+        if (!_armedNotifs) {
+          _primeNotifBaselines();
+          _armNotifs();
+          // If it's already after the summary time, allow it to show right away.
+          try { maybeSendDailySummary(); } catch {}
+        }
+      };
+
+      const loadActivity = async ({ incremental = true } = {}) => {
+        try {
+          const prevMax = Number(latestActivityId.value || 0) || 0;
+          const sinceId = (incremental && prevMax > 0) ? prevMax : null;
+
+          const res = await api.getManagerActivity(60, sinceId);
+          const incoming = (res && res.events) ? res.events : [];
+
+          if (sinceId) {
+            if (incoming.length > 0) {
+              const merged = [...incoming, ...(recentActivity.value || [])];
+              const seen = new Set();
+              const deduped = [];
+              for (const ev of merged) {
+                const id = Number(ev?.id || 0) || 0;
+                if (!id || seen.has(id)) continue;
+                seen.add(id);
+                deduped.push(ev);
+              }
+              deduped.sort((a, b) => (Number(b?.id || 0) || 0) - (Number(a?.id || 0) || 0));
+              recentActivity.value = deduped.slice(0, 60);
+            }
+          } else {
+            recentActivity.value = incoming;
+          }
+
+          // Unseen staff activity is used only for the bell-dot indicator (and respects the Settings toggles).
+          let maxId = prevMax;
+          for (const ev of (incoming || [])) {
+            const id = Number(ev?.id || 0) || 0;
+            if (id > maxId) maxId = id;
+          }
+          for (const ev of (recentActivity.value || [])) {
+            const id = Number(ev?.id || 0) || 0;
+            if (id > maxId) maxId = id;
+          }
+          latestActivityId.value = maxId;
+
+          const p = notificationPrefs.value || defaultNotifPrefs();
+          if (p.staff_notifications === false) {
+            unseenActivityCount.value = 0;
+            // Avoid a backlog burst if user enables it later.
+            _lastActivityToastId = maxId;
+          } else {
+            const seenId = readSeenActivityId();
+            unseenActivityCount.value = (recentActivity.value || []).filter((e) => (Number(e?.id || 0) || 0) > seenId).length;
+
+            if (_armedNotifs && _canNotify('staff_notifications')) {
+              const source = (sinceId ? incoming : (recentActivity.value || []));
+              const newEvents = (source || [])
+                .filter((e) => (Number(e?.id || 0) || 0) > (Number(_lastActivityToastId || 0) || 0))
+                .sort((a, b) => (Number(a?.id || 0) || 0) - (Number(b?.id || 0) || 0));
+              if (newEvents.length > 0) {
+                const first = newEvents[0];
+                const msg = String(first?.message || '').trim();
+                if (msg) showToast(msg, '🔔');
+              }
+              _lastActivityToastId = maxId;
+            } else {
+              _lastActivityToastId = maxId;
+            }
+          }
+        } catch (e) {
+          // Activity is optional; don't block UI.
+          recentActivity.value = recentActivity.value || [];
+        }
+      };
+
+       const handleRefreshClick = async () => {
+          if (!isAuthenticated.value) return;
+          if (_manualRefreshInFlight) return;
+
+          _manualRefreshInFlight = true;
+          try {
+            // Soft refresh: reload data without reloading the browser tab (keeps session + UI state).
+            await loadAll();
+
+            // Clear "unseen staff activity" dot after a manual refresh.
+            const p = notificationPrefs.value || defaultNotifPrefs();
+            if (p.staff_notifications !== false) {
+              const latest = Number(latestActivityId.value || 0) || 0;
+              writeSeenActivityId(latest);
+              unseenActivityCount.value = 0;
+            }
+            showToast('Refreshed', '🔄');
+          } catch (e) {
+            showToast('Refresh failed', '⚠');
+          } finally {
+            _manualRefreshInFlight = false;
+          }
+        };
+
+      const startActivityPolling = () => {
+        if (activityTimer) return;
+        const loop = async () => {
+          if (!activityTimer) return;
+          if (!isAuthenticated.value) return;
+
+          const visible = (typeof document !== 'undefined') ? (document.visibilityState === 'visible') : true;
+          const baseDelay = visible ? 7000 : 30000;
+          const backoff = Math.min(60000, Math.max(0, Number(_activityBackoffMs || 0) || 0));
+          const nextDelay = baseDelay + backoff;
+
+          if (_manualRefreshInFlight || _activityInFlight) {
+            activityTimer = setTimeout(loop, nextDelay);
+            return;
+          }
+
+          _activityInFlight = true;
+          _lastActivityPollAt = Date.now();
+          try {
+            await loadActivity({ incremental: true });
+            _activityBackoffMs = 0;
+          } catch {
+            _activityBackoffMs = Math.min(60000, (_activityBackoffMs ? _activityBackoffMs * 2 : 5000));
+          } finally {
+            _activityInFlight = false;
+          }
+
+          // If polling was stopped while this tick was running, don't reschedule.
+          if (!activityTimer) return;
+          activityTimer = setTimeout(loop, nextDelay);
+        };
+
+        // Start quickly after login (but avoid spamming on first render).
+        activityTimer = setTimeout(loop, 1500);
+      };
+
+      const stopActivityPolling = () => {
+        if (!activityTimer) return;
+        clearTimeout(activityTimer);
+        activityTimer = null;
+      };
+
+      const startDashboardPolling = () => {
+        if (dashboardTimer) return;
+        const loop = async () => {
+          if (!dashboardTimer) return;
+          if (!isAuthenticated.value) return;
+          if (currentPage.value !== 'dashboard') return;
+
+          const visible = (typeof document !== 'undefined') ? (document.visibilityState === 'visible') : true;
+          const baseDelay = visible ? 15000 : 45000;
+          const statsEveryMs = visible ? 45000 : 120000;
+          const backoff = Math.min(120000, Math.max(0, Number(_dashboardBackoffMs || 0) || 0));
+          const nextDelay = baseDelay + backoff;
+
+          if (_manualRefreshInFlight || _dashboardInFlight) {
+            dashboardTimer = setTimeout(loop, nextDelay);
+            return;
+          }
+
+          _dashboardInFlight = true;
+          _lastDashboardPollAt = Date.now();
+          try {
+            await Promise.all([
+              loadOrders().catch(() => {}),
+              loadInventory().catch(() => {}),
+            ]);
+
+            const now = Date.now();
+            if (!_lastDashboardStatsAt || (now - _lastDashboardStatsAt) >= statsEveryMs) {
+              try { await loadDashboardStats(); } catch {}
+              _lastDashboardStatsAt = now;
+            }
+            _dashboardBackoffMs = 0;
+          } catch {
+            _dashboardBackoffMs = Math.min(120000, (_dashboardBackoffMs ? _dashboardBackoffMs * 2 : 10000));
+          } finally {
+            _dashboardInFlight = false;
+          }
+
+          // If polling was stopped while this tick was running, don't reschedule.
+          if (!dashboardTimer) return;
+          dashboardTimer = setTimeout(loop, nextDelay);
+        };
+
+        dashboardTimer = setTimeout(loop, 2500);
+      };
+
+      const stopDashboardPolling = () => {
+        if (!dashboardTimer) return;
+        clearTimeout(dashboardTimer);
+        dashboardTimer = null;
+      };
+
+      const startOrdersPolling = () => {
+        if (ordersTimer) return;
+        const loop = async () => {
+          if (!ordersTimer) return;
+          if (!isAuthenticated.value) return;
+          if (currentPage.value !== 'orders') {
+            // If user navigated away, slow down (or the watcher will stop polling).
+            const visible = (typeof document !== 'undefined') ? (document.visibilityState === 'visible') : true;
+            ordersTimer = setTimeout(loop, visible ? 20000 : 60000);
+            return;
+          }
+
+          const visible = (typeof document !== 'undefined') ? (document.visibilityState === 'visible') : true;
+          const baseDelay = visible ? 6000 : 30000;
+          const backoff = Math.min(60000, Math.max(0, Number(_ordersBackoffMs || 0) || 0));
+          const nextDelay = baseDelay + backoff;
+
+          if (_manualRefreshInFlight || _ordersInFlight) {
+            ordersTimer = setTimeout(loop, nextDelay);
+            return;
+          }
+
+          _ordersInFlight = true;
+          _lastOrdersPollAt = Date.now();
+          try {
+            await loadOrders();
+            _ordersBackoffMs = 0;
+          } catch {
+            _ordersBackoffMs = Math.min(60000, (_ordersBackoffMs ? _ordersBackoffMs * 2 : 8000));
+          } finally {
+            _ordersInFlight = false;
+          }
+
+          if (!ordersTimer) return;
+          ordersTimer = setTimeout(loop, nextDelay);
+        };
+
+        ordersTimer = setTimeout(loop, 2500);
+      };
+
+      const stopOrdersPolling = () => {
+        if (!ordersTimer) return;
+        clearTimeout(ordersTimer);
+        ordersTimer = null;
+      };
+
+      const handleLoginSuccess = (loginResult) => {
+        isAuthenticated.value = true;
+        const name = loginResult?.manager?.name || 'Manager';
+        managerName.value = name;
+        try { localStorage.setItem('managerInfo', JSON.stringify(loginResult.manager || { name })); } catch {}
+
+        showToast(`Welcome, ${name}!`, '✅');
+        loadAll()
+          .then(() => {
+            startActivityPolling();
+            startDashboardPolling();
+          })
+          .catch((e) => {
+            console.error(e);
+            showToast('Failed to load dashboard data', '⚠');
+          });
+      };
+
+      const handleLogout = () => {
+        isAuthenticated.value = false;
+        api.setToken(null);
+        managerName.value = 'Manager';
+        try { localStorage.removeItem('managerInfo'); } catch {}
+        inventory.value = [];
+        dishes.value = [];
+        pendingOrders.value = [];
+        selectedOrder.value = null;
+        recentActivity.value = [];
+        stopActivityPolling();
+        stopDashboardPolling();
+        stopOrdersPolling();
+        showToast('Logged out successfully', '👋');
+      };
+
+      const handleChildRefresh = async (payload) => {
+        try {
+          if (!payload || payload.type === 'inventory') await loadInventory();
+          if (!payload || payload.type === 'menu') await loadDishes();
+        } catch (e) {
+          console.error(e);
+          showToast('Refresh failed', '⚠');
+        }
+      };
+
+      const handleSelectOrder = (order) => {
+        selectedOrder.value = order;
+      };
+
+      const handleApproveOrder = async (batchId) => {
+        try {
+          await api.approveOrder(batchId);
+          showToast('Order approved', '✅');
+          await loadOrders();
+          await loadInventory();
+          await loadDashboardStats();
+        } catch (e) {
+          console.error(e);
+          showToast('Failed to approve order', '⚠');
+        }
+      };
+
+      const handleRejectOrder = async (batchId) => {
+        try {
+          await api.rejectOrder(batchId);
+          showToast('Order rejected', '🗑');
+          await loadOrders();
+          await loadDashboardStats();
+        } catch (e) {
+          console.error(e);
+          showToast('Failed to reject order', '⚠');
+        }
+      };
+
+      const bootstrapFromStoredToken = async () => {
+        // If a token exists, try to load data. If unauthorized, bounce back to login.
+        const token = api.getToken();
+        if (!token) return;
+        isAuthenticated.value = true;
+
+        try {
+          const cached = localStorage.getItem('managerInfo');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.name) managerName.value = parsed.name;
+          }
+        } catch {}
+
+        try {
+          await loadAll();
+          startActivityPolling();
+          if (currentPage.value === 'dashboard') startDashboardPolling();
+        } catch (e) {
+          console.error(e);
+          isAuthenticated.value = false;
+          api.setToken(null);
+        }
+      };
+
+      // Update time every minute
+      setInterval(() => {
+        currentTime.value = formatTopbarTime();
+        // If dashboard stays open, allow the daily summary to fire at the right time.
+        try { maybeSendDailySummary(); } catch {}
+      }, 60000);
+
+      onMounted(() => {
+        bootstrapFromStoredToken();
+
+        // If user returns to the tab, refresh quickly (without overlapping ongoing polls).
+        const onVisibility = () => {
+          if (!isAuthenticated.value) return;
+          if (typeof document === 'undefined') return;
+          if (document.visibilityState !== 'visible') return;
+
+          // Avoid frequent forced refreshes if the poll loop already ran very recently.
+          const now = Date.now();
+          const canKick = (now - (Number(_lastDashboardRefreshAt || 0) || 0)) > 1500;
+          if (!canKick) return;
+          _lastDashboardRefreshAt = now;
+
+          loadActivity({ incremental: true }).catch(() => {});
+          if (currentPage.value === 'dashboard') {
+            loadOrders().catch(() => {});
+            loadInventory().catch(() => {});
+            // Stats can be heavy; only kick if we haven't refreshed them recently.
+            if (!(_lastDashboardStatsAt) || (now - _lastDashboardStatsAt) > 15000) {
+              loadDashboardStats().catch(() => {});
+              _lastDashboardStatsAt = now;
+            }
+          } else if (currentPage.value === 'orders') {
+            loadOrders().catch(() => {});
+          }
+        };
+        try {
+          document.addEventListener('visibilitychange', onVisibility);
+          window.addEventListener('focus', onVisibility);
+          window.__dineflow_visibility_listener = onVisibility;
+        } catch {}
+
+          const onNotifChanged = (e) => {
+            const before = notificationPrefs.value || defaultNotifPrefs();
+            const detail = (e && e.detail && typeof e.detail === 'object') ? e.detail : {};
+            notificationPrefs.value = { ...defaultNotifPrefs(), ...readNotifPrefs(), ...detail };
+
+            // If user turns a toggle ON mid-session, don't spam existing data.
+            const after = notificationPrefs.value || defaultNotifPrefs();
+            if (before.staff_notifications === false && after.staff_notifications !== false) {
+              _lastActivityToastId = Number(latestActivityId.value || 0) || 0;
+              writeSeenActivityId(_lastActivityToastId);
+              unseenActivityCount.value = 0;
+            }
+            if (before.new_orders === false && after.new_orders !== false) {
+              _lastPendingBatchIds = new Set((pendingOrders.value || []).map((o) => String(o?.id ?? '')));
+            }
+            if (before.low_stock === false && after.low_stock !== false) {
+              const sets = _getInventoryAlertSets();
+              _lastLowStockIds = sets.low;
+              _lastOutOfStockIds = sets.out;
+            }
+            if (before.daily_summary === false && after.daily_summary !== false) {
+              // If it's already after the summary time, send immediately (once per day).
+              try { maybeSendDailySummary(); } catch {}
+            }
+          };
+         window.addEventListener('dineflow:notification-settings-changed', onNotifChanged);
+         try {
+           window.__dineflow_notif_listener = onNotifChanged;
+         } catch {}
+      });
+
+      onBeforeUnmount(() => {
+        try {
+          const fn = window.__dineflow_notif_listener;
+          if (fn) window.removeEventListener('dineflow:notification-settings-changed', fn);
+        } catch {}
+        try {
+          const fn = window.__dineflow_visibility_listener;
+          if (fn) {
+            document.removeEventListener('visibilitychange', fn);
+            window.removeEventListener('focus', fn);
+          }
+        } catch {}
+      });
+
+      watch(currentPage, (page) => {
+        if (!isAuthenticated.value) return;
+        if (page === 'inventory') loadInventory().catch(() => {});
+        if (page === 'menu') loadDishes().catch(() => {});
+        if (page === 'orders') {
+          loadOrders().catch(() => {});
+          startOrdersPolling();
+        } else {
+          stopOrdersPolling();
+        }
+        if (page === 'dashboard') {
+          loadActivity().catch(() => {});
+          loadDashboardStats().catch(() => {});
+          startDashboardPolling();
+        } else {
+          stopDashboardPolling();
+        }
+      });
+
+      const currentProps = computed(() => {
+        const base = {
+          inventory: inventory.value,
+          dishes: dishes.value,
+          pendingOrders: pendingOrders.value,
+          selectedOrder: selectedOrder.value,
+          lowStockItems: lowStockItems.value,
+          outOfStock: outOfStock.value,
+          dashboardStats: dashboardStats.value,
+        };
+        if (currentPage.value === 'dashboard') {
+          return { ...base, recentActivity: recentActivity.value };
+        }
+        return base;
+      });
+
+      return {
+        isAuthenticated,
+        currentPage,
+        sidebarCollapsed,
+        mobileSidebarOpen,
+        toasts,
+        currentTime,
+        managerName,
+        managerInitial,
+        inventory,
+        dishes,
+        pendingOrders,
+        selectedOrder,
+        lowStockItems,
+        outOfStock,
+        recentActivity,
+        bellDot,
+        handleRefreshClick,
+        currentPageLabel,
+        currentComponent,
+        currentProps,
+        navItems,
+        navigate,
+        openMobileSidebar,
+        closeMobileSidebar,
+        toggleSidebar,
+        showToast,
+        handleLoginSuccess,
+        handleLogout,
+        handleChildRefresh,
+        handleSelectOrder,
+        handleApproveOrder,
+        handleRejectOrder
+      };
+    }
+  }).mount('#app');
+
+  if (window.__dineflow_boot) window.__dineflow_boot.mounted = true;
+</script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>DineFlow - Customer</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Keep CDN tooling for now (matches manager dashboard setup). -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            coffee:  { DEFAULT: '#6F4E37', light: '#8B6347', dark: '#4A3423' },
+            cream:   { DEFAULT: '#F8F5F0', dark:  '#EDE8E0' },
+            mint:    { DEFAULT: '#3AAFA9', light: '#4EC9C3', dark: '#2A8F8A' },
+            success: '#2A9D8F',
+            danger:  '#E63946',
+            amber:   '#F4A261',
+            gold:    '#E9C46A',
+          },
+          fontFamily: {
+            display: ['"Playfair Display"', 'serif'],
+            sans:    ['"DM Sans"', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'DM Sans', sans-serif;
+      background: #F8F5F0;
+      color: #1A1208;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Mobile shell centered on desktop */
+    #app {
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: #F8F5F0;
+      position: relative;
+      box-shadow: 0 0 60px rgba(111,78,55,0.12);
+    }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 40;
+      background: rgba(248,245,240,0.95);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(111,78,55,0.1);
+      padding: 0.75rem 1rem;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .topbar-title {
+      font-family: 'Playfair Display', serif;
+      font-weight: 800; font-size: 1.1rem;
+      color: #1A1208; flex: 1;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1.5px solid #E5DDD5;
+      border-radius: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      font-weight: 900;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      font-family: 'DM Sans', sans-serif;
+      color: #6F4E37;
+    }
+    .btn-ghost:hover { background: #F8F5F0; border-color: #D9CFC6; }
+
+    .btn-primary {
+      background: #6F4E37; color: white;
+      border: none; border-radius: 0.75rem;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.9375rem; font-weight: 900;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: background 0.2s, transform 0.1s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .btn-primary:hover  { background: #8B6347; }
+    .btn-primary:active { transform: scale(0.98); }
+
+    .page { padding-bottom: 110px; }
+
+    .bottom-nav {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 0;
+      z-index: 50;
+      width: min(430px, 100vw);
+      background: rgba(26,18,8,0.96);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 0.55rem 0.8rem calc(0.65rem + env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.4rem;
+    }
+
+    .nav-btn {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: rgba(248,245,240,0.68);
+      border-radius: 0.9rem;
+      padding: 0.55rem 0.4rem;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+      min-height: 54px;
+    }
+    .nav-btn i { font-size: 1.05rem; line-height: 1; }
+    .nav-btn span { font-size: 0.72rem; line-height: 1; letter-spacing: 0.02em; }
+    .nav-btn.active {
+      color: #F4A261;
+      background: rgba(244,162,97,0.12);
+    }
+
+    .nav-badge {
+      position: absolute;
+      top: 0.25rem;
+      right: 0.6rem;
+      background: #E63946;
+      color: white;
+      border-radius: 999px;
+      padding: 0.12rem 0.35rem;
+      font-weight: 900;
+      font-size: 0.65rem;
+      line-height: 1;
+      border: 2px solid rgba(26,18,8,0.96);
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="module">
+    import CustomerApp from './components/CustomerApp.js';
+    const { createApp } = Vue;
+    createApp(CustomerApp).mount('#app');
+  </script>
+</body>
+</html>
